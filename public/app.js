@@ -4,18 +4,31 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.m
 let camera, scene, renderer, flashLight, video;
 let indexFingerSphere;
 let indexFingerTip;
-let previousScreenX = 0;
-let previousScreenY = 0;
+
 const cubes = [];
 const aimDiv = document.getElementById('aim');
 
+const createSmoother = (smoothing = 0.8) => {
+  let previousValue = 0;
+  return (currentValue) => {
+    if (previousValue === null) previousValue = currentValue;
+    const smoothedValue =
+      previousValue * smoothing + currentValue * (1 - smoothing);
+    previousValue = smoothedValue;
+    return smoothedValue;
+  };
+};
+
+const smoothScreenX = createSmoother();
+const smoothScreenY = createSmoother();
+
 // === Utility Functions ===
-function easeInOutQuad(t) {
+const easeInOutQuad = (t) => {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-}
+};
 
 // === THREE.js Setup ===
-function initThree() {
+const initThree = () => {
   scene = new THREE.Scene();
 
   // Camera Setup
@@ -76,27 +89,27 @@ function initThree() {
   createCubes(getRandomCubePositions(100), cubeGeo, cubeMat);
 
   window.addEventListener('resize', onWindowResize);
-}
+};
 
-function animateFOVTransition(camera, startFOV, endFOV, duration) {
+const animateFOVTransition = (camera, startFOV, endFOV, duration) => {
   const startTime = performance.now();
-  function animate() {
+  const animate = () => {
     const elapsed = performance.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
     camera.fov = startFOV + (endFOV - startFOV) * easeInOutQuad(progress);
     camera.updateProjectionMatrix();
     if (progress < 1) requestAnimationFrame(animate);
-  }
+  };
   animate();
-}
+};
 
-function onWindowResize() {
+const onWindowResize = () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
+};
 
-function createWallMaterial(texturePath) {
+const createWallMaterial = (texturePath) => {
   const texture = new THREE.TextureLoader().load(texturePath);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(5, 5);
@@ -106,17 +119,17 @@ function createWallMaterial(texturePath) {
     emissive: new THREE.Color(0x00ff00),
     emissiveIntensity: 0.1,
   });
-}
+};
 
-function createWall(geometry, material, rotation, position) {
+const createWall = (geometry, material, rotation, position) => {
   const wall = new THREE.Mesh(geometry, material);
   wall.rotation.copy(rotation);
   wall.position.copy(position);
   wall.receiveShadow = true;
   scene.add(wall);
-}
+};
 
-function createCubes(positions, geometry, material) {
+const createCubes = (positions, geometry, material) => {
   positions.forEach((pos) => {
     const cube = new THREE.Mesh(geometry, material);
     cube.position.copy(pos);
@@ -129,9 +142,9 @@ function createCubes(positions, geometry, material) {
     scene.add(cube);
     cubes.push(cube);
   });
-}
+};
 
-function getStaticCubePositions() {
+const getStaticCubePositions = () => {
   return [
     { x: -2, y: 2, z: 0 },
     { x: 2, y: 1, z: -1 },
@@ -147,9 +160,9 @@ function getStaticCubePositions() {
     { x: 1, y: 0, z: -80 },
     { x: -1, y: 3, z: -90 },
   ].map((pos) => new THREE.Vector3(pos.x, pos.y, pos.z));
-}
+};
 
-function getRandomCubePositions(count) {
+const getRandomCubePositions = (count) => {
   return Array.from(
     { length: count },
     () =>
@@ -159,16 +172,16 @@ function getRandomCubePositions(count) {
         THREE.MathUtils.randFloat(-99.5, -0.5)
       )
   );
-}
+};
 
 // === Animation Loop ===
-function animate() {
+const animate = () => {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
-}
+};
 
 // === Video Setup ===
-async function setupVideo() {
+const setupVideo = async () => {
   video = Object.assign(document.createElement('video'), {
     autoplay: true,
     playsInline: true,
@@ -177,10 +190,10 @@ async function setupVideo() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true });
   video.srcObject = stream;
   await video.play();
-}
+};
 
 // === Face Detection ===
-async function initFaceDetection() {
+const initFaceDetection = async () => {
   const detector = await faceDetection.createDetector(
     faceDetection.SupportedModels.MediaPipeFaceDetector,
     {
@@ -190,7 +203,7 @@ async function initFaceDetection() {
     }
   );
 
-  async function detectFaces() {
+  const detectFaces = async () => {
     const faces = await detector.estimateFaces(video);
     const face = faces[0];
     if (face) {
@@ -211,13 +224,13 @@ async function initFaceDetection() {
       camera.lookAt(0, 0, -targetZ);
     }
     requestAnimationFrame(detectFaces);
-  }
+  };
 
   detectFaces();
-}
+};
 
 // === Hand Detection ===
-async function initHandDetection() {
+const initHandDetection = async () => {
   const detector = await handPoseDetection.createDetector(
     handPoseDetection.SupportedModels.MediaPipeHands,
     {
@@ -231,7 +244,7 @@ async function initHandDetection() {
     console.log('indexFingerTip', indexFingerTip);
   });
 
-  async function detectHands() {
+  const detectHands = async () => {
     const hands = await detector.estimateHands(video);
     const hand = hands[0];
     if (!hand || !hand.keypoints) {
@@ -240,15 +253,17 @@ async function initHandDetection() {
     }
 
     const wrist = hand.keypoints[0];
+
+    const indexFinger = hand.keypoints[8];
+
     const rawScreenX = window.innerWidth * (1 - wrist.x / video.videoWidth);
     const rawScreenY = window.innerHeight * (wrist.y / video.videoHeight);
 
-    const smoothing = 0.8;
-    const screenX = previousScreenX * smoothing + rawScreenX * (1 - smoothing);
-    const screenY =
-      previousScreenY * smoothing + rawScreenY * (1 - smoothing) - 50;
-    previousScreenX = screenX;
-    previousScreenY = screenY;
+    const wristX = smoothScreenX(rawScreenX);
+    const wristY = smoothScreenY(rawScreenY);
+
+    aimDiv.style.left = `${wristX}px`;
+    aimDiv.style.top = `${wristY}px`;
 
     const index = hand.keypoints[8];
     const thumb = hand.keypoints[4];
@@ -276,16 +291,13 @@ async function initHandDetection() {
         new THREE.Vector3(normX * 5, normY * 3, camera.position.z),
         0.1
       );
-
-      aimDiv.style.left = `${screenX}px`;
-      aimDiv.style.top = `${screenY}px`;
     }
 
     requestAnimationFrame(detectHands);
-  }
+  };
 
   detectHands();
-}
+};
 
 // === Init Everything ===
 (async () => {
