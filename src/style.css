@@ -1,0 +1,22 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.aim {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid red;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+}
+
+.wrist {
+  width: 90px;
+  height: 90px;
+  border: 5px solid blue;
+}

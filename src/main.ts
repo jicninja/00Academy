@@ -1,13 +1,146 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.module.js';
+import * as THREE from 'three';
+import * as faceDetection from '@tensorflow-models/face-detection';
+import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 
 // Globals
 let camera, scene, renderer, flashLight, video;
-let indexFingerSphere;
+let aimMesh;
 let indexFingerTip;
+
+let cameraPos = new THREE.Vector3(0, 0, 5);
 
 const cubes = [];
 const aimDiv = document.getElementById('aim');
 const aimDiv2 = document.getElementById('aim2');
+
+const defaultHand = [
+  {
+    x: 1.6427661699799072,
+    y: -0.19020156944192756,
+    z: -0.166473388671875,
+    name: 'wrist',
+  },
+  {
+    x: 1.2769354542342197,
+    y: -0.056832973007334364,
+    z: 0.019464492797851562,
+    name: 'thumb_cmc',
+  },
+  {
+    x: 0.9790010599044334,
+    y: 0.0640668532808889,
+    z: 0.06191253662109375,
+    name: 'thumb_mcp',
+  },
+  {
+    x: 0.6995394674685966,
+    y: 0.22287843739591728,
+    z: 0.1546478271484375,
+    name: 'thumb_ip',
+  },
+  {
+    x: 0.4942132008818161,
+    y: 0.35976225500904213,
+    z: 0.105438232421875,
+    name: 'thumb_tip',
+  },
+  {
+    x: 1.0322854144123566,
+    y: 0.5787921323438753,
+    z: -0.022125244140625,
+    name: 'index_finger_mcp',
+  },
+  {
+    x: 0.8652211946991455,
+    y: 0.8155020325442423,
+    z: 0.06641387939453125,
+    name: 'index_finger_pip',
+  },
+  {
+    x: 0.7593564165380966,
+    y: 0.9811897388657201,
+    z: 0.1454925537109375,
+    name: 'index_finger_dip',
+  },
+  {
+    x: 0.6847436947372925,
+    y: 1.0891758835872283,
+    z: 0.44097900390625,
+    name: 'index_finger_tip',
+  },
+  {
+    x: 1.2619141314734887,
+    y: 0.6958332656880487,
+    z: -0.05092620849609375,
+    name: 'middle_finger_mcp',
+  },
+  {
+    x: 1.1265928333250057,
+    y: 1.0351704991420378,
+    z: 0.07373809814453125,
+    name: 'middle_finger_pip',
+  },
+  {
+    x: 1.0836947185543548,
+    y: 1.1879691294392218,
+    z: 0.2935791015625,
+    name: 'middle_finger_dip',
+  },
+  {
+    x: 1.007411520704366,
+    y: 1.3581665418108573,
+    z: 0.5145263671875,
+    name: 'middle_finger_tip',
+  },
+  {
+    x: 1.4809902606156837,
+    y: 0.7202776194547881,
+    z: 0.003964900970458984,
+    name: 'ring_finger_mcp',
+  },
+  {
+    x: 1.4291265362498533,
+    y: 0.9971688128074278,
+    z: 0.1325225830078125,
+    name: 'ring_finger_pip',
+  },
+  {
+    x: 1.353815052434541,
+    y: 1.1752258799036612,
+    z: 0.31402587890625,
+    name: 'ring_finger_dip',
+  },
+  {
+    x: 1.2822640163448822,
+    y: 1.342780273314344,
+    z: 0.535888671875,
+    name: 'ring_finger_tip',
+  },
+  {
+    x: 1.6949337569621574,
+    y: 0.627803308795916,
+    z: 0.0618743896484375,
+    name: 'pinky_finger_mcp',
+  },
+  {
+    x: 1.763933695628978,
+    y: 0.8358869700690378,
+    z: 0.07541656494140625,
+    name: 'pinky_finger_pip',
+  },
+  {
+    x: 1.8207584542778503,
+    y: 1.032779831345903,
+    z: 0.15960693359375,
+    name: 'pinky_finger_dip',
+  },
+  {
+    x: 1.8166963977364075,
+    y: 1.1729585564693084,
+    z: 0.36590576171875,
+    name: 'pinky_finger_tip',
+  },
+];
 
 // === Utility Functions ===
 const easeInOutQuad = (t) => {
@@ -76,20 +209,20 @@ const initThree = () => {
   document.body.appendChild(renderer.domElement);
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0x00ffff, 0.02));
-  flashLight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI / 3.2, 0.2);
+  scene.add(new THREE.AmbientLight(0x00ffff, 0.2));
+  flashLight = new THREE.SpotLight(0xffffff, 200, 100, Math.PI / 3.2, 0.2);
   flashLight.position.set(-1.5, -0.5, 6);
   flashLight.castShadow = true;
   flashLight.shadow.mapSize.set(1024, 1024);
   scene.add(flashLight);
 
   // Finger Sphere
-  indexFingerSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 16, 16),
+  aimMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.5, 0.5),
     new THREE.MeshStandardMaterial({ color: 0xff0000 })
   );
-  indexFingerSphere.castShadow = true;
-  scene.add(indexFingerSphere);
+  aimMesh.castShadow = true;
+  scene.add(aimMesh);
 
   // Room Walls
   const wallMat = createWallMaterial('./assets/grid.jpg');
@@ -113,6 +246,7 @@ const initThree = () => {
   // Cubes
   const cubeGeo = new THREE.BoxGeometry();
   const cubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
   createCubes(getStaticCubePositions(), cubeGeo, cubeMat);
   createCubes(getRandomCubePositions(100), cubeGeo, cubeMat);
 
@@ -190,6 +324,9 @@ const getRandomCubePositions = (count) => {
 // === Animation Loop ===
 const animate = () => {
   requestAnimationFrame(animate);
+
+  camera.position.lerp(cameraPos, 0.1);
+  camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
 };
 
@@ -223,7 +360,8 @@ const initFaceDetection = async () => {
       const { box } = face;
 
       const faceSize = Math.max(box.xMax - box.xMin, box.yMax - box.yMin);
-      const depth = THREE.MathUtils.clamp(10 - faceSize / 50, 2, 10);
+
+      const depth = THREE.MathUtils.clamp(10 - faceSize / 50, 2, 20);
 
       const centerX = box.xMin + (box.xMax - box.xMin) / 2;
       const centerY = box.yMin + (box.yMax - box.yMin) / 2;
@@ -232,15 +370,7 @@ const initFaceDetection = async () => {
       const normY = Math.max(-(centerY / video.videoHeight) * 2 + 1, -0.5);
       const targetZ = camera.position.z + (depth - camera.position.z) * 0.9;
 
-      const target = new THREE.Vector3(-normX * 5, normY * 3, targetZ);
-
-      camera.position.lerp(target, 0.08);
-
-      flashLight.position.lerp(
-        target.clone().add(new THREE.Vector3(0, 0.5, 0)),
-        0.01
-      );
-      camera.lookAt(0, 0, -targetZ);
+      cameraPos.set(-normX * 5, normY * 3, targetZ);
     }
     requestAnimationFrame(detectFaces);
   };
@@ -266,10 +396,9 @@ const initHandDetection = async () => {
   const detectHands = async () => {
     const hands = await detector.estimateHands(video);
 
-    console.log('hands', hands);
-
     const hand =
       hands.find((itemHand) => itemHand.handedness === 'Left') || hands[0];
+
     if (!hand || !hand.keypoints) {
       requestAnimationFrame(detectHands);
       return;
@@ -292,8 +421,8 @@ const initHandDetection = async () => {
     );
 
     const indexPos = smoothIndexPos(rawScreenIndexFinger);
-
     const wristPos = smoothWristPos(rawScreenWrist);
+
     aimDiv.style.left = `${wristPos.x}px`;
     aimDiv.style.top = `${wristPos.y}px`;
 
@@ -304,16 +433,45 @@ const initHandDetection = async () => {
     const normY = -(indexFinger.y / video.videoHeight) * 2 + 1;
 
     const vector = new THREE.Vector3(normX, normY, 0.5).unproject(camera);
-
     const dir = vector.sub(camera.position).normalize();
-
     const a = camera.position.clone().add(dir.multiplyScalar(5));
 
-    indexFingerSphere.position.lerp(a, 0.4);
+    //aimMesh.position.lerp(a, 0.4);
     flashLight.position.lerp(
       new THREE.Vector3(normX * 5, normY * 3, camera.position.z),
       0.1
     );
+
+    if (hand.keypoints3D && false) {
+      scene.children = scene.children.filter(
+        (child) => !(child.geometry instanceof THREE.SphereGeometry)
+      );
+
+      console.log('hand.keypoints3D', hand.keypoints3D);
+
+      hand.keypoints3D.forEach((keypoint) => {
+        const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: 0x00ff00,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+        keypoint.x *= 10;
+        keypoint.y *= 10;
+        keypoint.z *= 10;
+
+        keypoint.x = -keypoint.x;
+        keypoint.y = -keypoint.y;
+        keypoint.z = -keypoint.z;
+
+        keypoint.x += wristPos.x * 0.001;
+        keypoint.y += wristPos.y * 0.001;
+        keypoint.z += wristPos.z * 0.001;
+        sphere.position.set(keypoint.x, keypoint.y, keypoint.z);
+
+        scene.add(sphere);
+      });
+    }
 
     requestAnimationFrame(detectHands);
   };
@@ -330,7 +488,7 @@ const init = async () => {
   await initFaceDetection();
   await initHandDetection();
 
-  animateFOVTransition(camera, 0, 45, 2000);
+  animateFOVTransition(camera, 0, 55, 2000);
 };
 
 init();
