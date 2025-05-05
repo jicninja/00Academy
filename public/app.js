@@ -7,9 +7,15 @@ let indexFingerTip;
 
 const cubes = [];
 const aimDiv = document.getElementById('aim');
+const aimDiv2 = document.getElementById('aim2');
 
-const createSmoother = (smoothing = 0.8) => {
-  let previousValue = 0;
+// === Utility Functions ===
+const easeInOutQuad = (t) => {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+};
+
+const createSmoother = (smoothing = 0.9) => {
+  let previousValue = null;
   return (currentValue) => {
     if (previousValue === null) previousValue = currentValue;
     const smoothedValue =
@@ -19,12 +25,35 @@ const createSmoother = (smoothing = 0.8) => {
   };
 };
 
-const smoothScreenX = createSmoother();
-const smoothScreenY = createSmoother();
+const createVector3Smoother = (smoothing = 0.9) => {
+  const smoothX = createSmoother(smoothing);
+  const smoothY = createSmoother(smoothing);
+  const smoothZ = createSmoother(smoothing);
+  return (currentVector) => {
+    return new THREE.Vector3(
+      smoothX(currentVector.x),
+      smoothY(currentVector.y),
+      smoothZ(currentVector.z)
+    );
+  };
+};
 
-// === Utility Functions ===
-const easeInOutQuad = (t) => {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+const smoothWristPos = createVector3Smoother();
+const smoothIndexPos = createVector3Smoother(0.8);
+
+const createCubes = (positions, geometry, material) => {
+  positions.forEach((pos) => {
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.copy(pos);
+    cube.castShadow = cube.receiveShadow = true;
+    cube.rotation.set(
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2
+    );
+    scene.add(cube);
+    cubes.push(cube);
+  });
 };
 
 // === THREE.js Setup ===
@@ -39,7 +68,6 @@ const initThree = () => {
     1000
   );
   camera.position.z = 5;
-  animateFOVTransition(camera, 10, 50, 2000);
 
   // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -129,21 +157,6 @@ const createWall = (geometry, material, rotation, position) => {
   scene.add(wall);
 };
 
-const createCubes = (positions, geometry, material) => {
-  positions.forEach((pos) => {
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.copy(pos);
-    cube.castShadow = cube.receiveShadow = true;
-    cube.rotation.set(
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2
-    );
-    scene.add(cube);
-    cubes.push(cube);
-  });
-};
-
 const getStaticCubePositions = () => {
   return [
     { x: -2, y: 2, z: 0 },
@@ -208,15 +221,21 @@ const initFaceDetection = async () => {
     const face = faces[0];
     if (face) {
       const { box } = face;
+
       const faceSize = Math.max(box.xMax - box.xMin, box.yMax - box.yMin);
       const depth = THREE.MathUtils.clamp(10 - faceSize / 50, 2, 10);
+
       const centerX = box.xMin + (box.xMax - box.xMin) / 2;
       const centerY = box.yMin + (box.yMax - box.yMin) / 2;
+
       const normX = (centerX / video.videoWidth) * 2 - 1;
-      const normY = -(centerY / video.videoHeight) * 2 + 1;
-      const targetZ = camera.position.z + (depth - camera.position.z) * 0.5;
+      const normY = Math.max(-(centerY / video.videoHeight) * 2 + 1, -0.5);
+      const targetZ = camera.position.z + (depth - camera.position.z) * 0.9;
+
       const target = new THREE.Vector3(-normX * 5, normY * 3, targetZ);
-      camera.position.lerp(target, 0.075);
+
+      camera.position.lerp(target, 0.08);
+
       flashLight.position.lerp(
         target.clone().add(new THREE.Vector3(0, 0.5, 0)),
         0.01
@@ -236,7 +255,7 @@ const initHandDetection = async () => {
     {
       runtime: 'mediapipe',
       solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
-      modelSelection: 1,
+      modelSelection: 'lite',
     }
   );
 
@@ -246,7 +265,11 @@ const initHandDetection = async () => {
 
   const detectHands = async () => {
     const hands = await detector.estimateHands(video);
-    const hand = hands[0];
+
+    console.log('hands', hands);
+
+    const hand =
+      hands.find((itemHand) => itemHand.handedness === 'Left') || hands[0];
     if (!hand || !hand.keypoints) {
       requestAnimationFrame(detectHands);
       return;
@@ -256,42 +279,41 @@ const initHandDetection = async () => {
 
     const indexFinger = hand.keypoints[8];
 
-    const rawScreenX = window.innerWidth * (1 - wrist.x / video.videoWidth);
-    const rawScreenY = window.innerHeight * (wrist.y / video.videoHeight);
+    const rawScreenWrist = new THREE.Vector3(
+      window.innerWidth * (1 - wrist.x / video.videoWidth),
+      window.innerHeight * (wrist.y / video.videoHeight),
+      0
+    );
 
-    const wristX = smoothScreenX(rawScreenX);
-    const wristY = smoothScreenY(rawScreenY);
+    const rawScreenIndexFinger = new THREE.Vector3(
+      window.innerWidth * (1 - indexFinger.x / video.videoWidth),
+      window.innerHeight * (indexFinger.y / video.videoHeight),
+      0
+    );
 
-    aimDiv.style.left = `${wristX}px`;
-    aimDiv.style.top = `${wristY}px`;
+    const indexPos = smoothIndexPos(rawScreenIndexFinger);
 
-    const index = hand.keypoints[8];
-    const thumb = hand.keypoints[4];
-    indexFingerTip = index;
+    const wristPos = smoothWristPos(rawScreenWrist);
+    aimDiv.style.left = `${wristPos.x}px`;
+    aimDiv.style.top = `${wristPos.y}px`;
 
-    if (index && thumb) {
-      const dx = index.x - thumb.x;
-      const dy = index.y - thumb.y;
-      const dz = (index.z || 0) - (thumb.z || 0);
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (distance > 50)
-        console.log('Pulgar lejos del índice: gesto detectado');
-    }
+    aimDiv2.style.left = `${indexPos.x}px`;
+    aimDiv2.style.top = `${indexPos.y}px`;
 
-    if (index) {
-      const normX = -((index.x / video.videoWidth) * 2 - 1);
-      const normY = -(index.y / video.videoHeight) * 2 + 1;
+    const normX = -((indexFinger.x / video.videoWidth) * 2 - 1);
+    const normY = -(indexFinger.y / video.videoHeight) * 2 + 1;
 
-      const vector = new THREE.Vector3(normX, normY, 0.5).unproject(camera);
-      const dir = vector.sub(camera.position).normalize();
-      const a = camera.position.clone().add(dir.multiplyScalar(5));
+    const vector = new THREE.Vector3(normX, normY, 0.5).unproject(camera);
 
-      indexFingerSphere.position.lerp(a, 0.4);
-      flashLight.position.lerp(
-        new THREE.Vector3(normX * 5, normY * 3, camera.position.z),
-        0.1
-      );
-    }
+    const dir = vector.sub(camera.position).normalize();
+
+    const a = camera.position.clone().add(dir.multiplyScalar(5));
+
+    indexFingerSphere.position.lerp(a, 0.4);
+    flashLight.position.lerp(
+      new THREE.Vector3(normX * 5, normY * 3, camera.position.z),
+      0.1
+    );
 
     requestAnimationFrame(detectHands);
   };
@@ -300,10 +322,15 @@ const initHandDetection = async () => {
 };
 
 // === Init Everything ===
-(async () => {
+const init = async () => {
   initThree();
   animate();
+
   await setupVideo();
   await initFaceDetection();
   await initHandDetection();
-})();
+
+  animateFOVTransition(camera, 0, 45, 2000);
+};
+
+init();
