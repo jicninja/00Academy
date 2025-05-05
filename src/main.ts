@@ -3,8 +3,12 @@ import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 
 // Globals
-let camera, scene, renderer, flashLight, video;
-let aimMesh;
+let camera: THREE.PerspectiveCamera,
+  scene: THREE.Scene,
+  renderer: THREE.WebGLRenderer,
+  flashLight: THREE.SpotLight,
+  video: HTMLVideoElement;
+let aimMesh: THREE.Mesh;
 let indexFingerTip;
 
 let cameraPos = new THREE.Vector3(0, 0, 5);
@@ -253,7 +257,12 @@ const initThree = () => {
   window.addEventListener('resize', onWindowResize);
 };
 
-const animateFOVTransition = (camera, startFOV, endFOV, duration) => {
+const animateFOVTransition = (
+  camera: THREE.PerspectiveCamera,
+  startFOV: number,
+  endFOV: number,
+  duration: number
+) => {
   const startTime = performance.now();
   const animate = () => {
     const elapsed = performance.now() - startTime;
@@ -271,7 +280,7 @@ const onWindowResize = () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 };
 
-const createWallMaterial = (texturePath) => {
+const createWallMaterial = (texturePath: string) => {
   const texture = new THREE.TextureLoader().load(texturePath);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(5, 5);
@@ -283,7 +292,12 @@ const createWallMaterial = (texturePath) => {
   });
 };
 
-const createWall = (geometry, material, rotation, position) => {
+const createWall = (
+  geometry: THREE.PlaneGeometry,
+  material: THREE.MeshStandardMaterial,
+  rotation: THREE.Euler,
+  position: THREE.Vector3
+) => {
   const wall = new THREE.Mesh(geometry, material);
   wall.rotation.copy(rotation);
   wall.position.copy(position);
@@ -309,7 +323,7 @@ const getStaticCubePositions = () => {
   ].map((pos) => new THREE.Vector3(pos.x, pos.y, pos.z));
 };
 
-const getRandomCubePositions = (count) => {
+const getRandomCubePositions = (count: number) => {
   return Array.from(
     { length: count },
     () =>
@@ -349,7 +363,7 @@ const initFaceDetection = async () => {
     {
       runtime: 'mediapipe',
       solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
-      modelSelection: 1,
+      modelType: 'short',
     }
   );
 
@@ -385,7 +399,7 @@ const initHandDetection = async () => {
     {
       runtime: 'mediapipe',
       solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
-      modelSelection: 'lite',
+      modelType: 'lite',
     }
   );
 
@@ -423,11 +437,13 @@ const initHandDetection = async () => {
     const indexPos = smoothIndexPos(rawScreenIndexFinger);
     const wristPos = smoothWristPos(rawScreenWrist);
 
-    aimDiv.style.left = `${wristPos.x}px`;
-    aimDiv.style.top = `${wristPos.y}px`;
+    if (aimDiv && aimDiv2) {
+      aimDiv.style.left = `${wristPos.x}px`;
+      aimDiv.style.top = `${wristPos.y}px`;
 
-    aimDiv2.style.left = `${indexPos.x}px`;
-    aimDiv2.style.top = `${indexPos.y}px`;
+      aimDiv2.style.left = `${indexPos.x}px`;
+      aimDiv2.style.top = `${indexPos.y}px`;
+    }
 
     const normX = -((indexFinger.x / video.videoWidth) * 2 - 1);
     const normY = -(indexFinger.y / video.videoHeight) * 2 + 1;
