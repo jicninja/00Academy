@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 import { createVector3Smoother } from './utils/smoother';
-
+import { initializeTargets, targets } from './components/targets';
 // Globals
 let camera: THREE.PerspectiveCamera,
   scene: THREE.Scene,
@@ -14,7 +14,6 @@ let indexFingerTip;
 
 let cameraPos = new THREE.Vector3(0, 0, 5);
 
-const cubes = [];
 const aimDiv = document.getElementById('aim');
 const aimDiv2 = document.getElementById('aim2');
 
@@ -25,25 +24,6 @@ const easeInOutQuad = (t: number) => {
 
 const smoothWristPos = createVector3Smoother();
 const smoothIndexPos = createVector3Smoother(0.8);
-
-const createCubes = (
-  positions: THREE.Vector3[],
-  geometry: THREE.BufferGeometry,
-  material: THREE.Material
-) => {
-  positions.forEach((pos) => {
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.copy(pos);
-    cube.castShadow = cube.receiveShadow = true;
-    cube.rotation.set(
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2
-    );
-    scene.add(cube);
-    cubes.push(cube);
-  });
-};
 
 // === THREE.js Setup ===
 const initThree = () => {
@@ -99,13 +79,6 @@ const initThree = () => {
     )
   );
 
-  // Cubes
-  const cubeGeo = new THREE.BoxGeometry();
-  const cubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-
-  createCubes(getStaticCubePositions(), cubeGeo, cubeMat);
-  createCubes(getRandomCubePositions(100), cubeGeo, cubeMat);
-
   window.addEventListener('resize', onWindowResize);
 };
 
@@ -155,36 +128,6 @@ const createWall = (
   wall.position.copy(position);
   wall.receiveShadow = true;
   scene.add(wall);
-};
-
-const getStaticCubePositions = () => {
-  return [
-    { x: -2, y: 2, z: 0 },
-    { x: 2, y: 1, z: -1 },
-    { x: 0, y: -1, z: 2 },
-    { x: 1, y: 2, z: -2 },
-    { x: -3, y: 0, z: -10 },
-    { x: 3, y: 1, z: -20 },
-    { x: 0, y: 0, z: -30 },
-    { x: 2, y: 2, z: -40 },
-    { x: -2, y: 1, z: -50 },
-    { x: 4, y: -1, z: -60 },
-    { x: -1, y: 3, z: -70 },
-    { x: 1, y: 0, z: -80 },
-    { x: -1, y: 3, z: -90 },
-  ].map((pos) => new THREE.Vector3(pos.x, pos.y, pos.z));
-};
-
-const getRandomCubePositions = (count: number) => {
-  return Array.from(
-    { length: count },
-    () =>
-      new THREE.Vector3(
-        THREE.MathUtils.randFloat(-9.5, 9.5),
-        THREE.MathUtils.randFloat(-0.5, 9.5),
-        THREE.MathUtils.randFloat(-99.5, -0.5)
-      )
-  );
 };
 
 // === Animation Loop ===
@@ -349,6 +292,9 @@ const initHandDetection = async () => {
 // === Init Everything ===
 const init = async () => {
   initThree();
+  initializeTargets();
+  targets.forEach((target) => scene.add(target));
+
   animate();
 
   await setupVideo();
