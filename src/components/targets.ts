@@ -56,5 +56,7 @@ export const initializeTargets = (
   const randomPositions = getRandomCubePositions(randomCount);
   const allPositions = [...staticPositions, ...randomPositions];
 
-  return allPositions.map((position) => new Target(position));
+  return allPositions.map(
+    (position) => new Target(position, Math.random() * 0xffffff)
+  );
 };
