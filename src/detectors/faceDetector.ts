@@ -9,8 +9,6 @@ export type DetectFacesOptions = {
 export class FaceDetector {
   private detector: faceDetection.FaceDetector | null = null;
 
-  constructor() {}
-
   async init() {
     this.detector = await faceDetection.createDetector(
       faceDetection.SupportedModels.MediaPipeFaceDetector,
