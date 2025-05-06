@@ -19,7 +19,7 @@ export class HandsDetector {
   private smoothIndexNormPos = createVector3Smoother();
   private smoothWristPos = createVector3Smoother();
 
-  public async init() {
+  public async initialize() {
     this.detector = await handPoseDetection.createDetector(
       handPoseDetection.SupportedModels.MediaPipeHands,
       {
@@ -72,33 +72,6 @@ export class HandsDetector {
       new THREE.Vector3(normIndexX, normIndexY, normIndexZ)
     );
 
-    /*
-    if (hand.keypoints3D) {
-      this.scene.children = this.scene.children.filter(
-        (child) =>
-          !(
-            child instanceof THREE.Mesh &&
-            child.geometry instanceof THREE.SphereGeometry
-          )
-      );
-
-      hand.keypoints3D.forEach((keypoint) => {
-        const sphereGeometry = new THREE.SphereGeometry(0.1, 16, 16);
-        const sphereMaterial = new THREE.MeshStandardMaterial({
-          color: 0x00ff00,
-        });
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-
-        const scale = 10;
-        keypoint.x = -keypoint.x * scale + wristPos.x * 0.001;
-        keypoint.y = -keypoint.y * scale - wristPos.y * 0.001;
-        keypoint.z = (keypoint.z ?? 0) * scale + wristPos.z * 0.001;
-
-        sphere.position.set(keypoint.x, keypoint.y, keypoint.z);
-      });
-    }
-
-    */
     callback({
       indexPos,
       normalizedIndexPos,

@@ -171,7 +171,7 @@ export class HandHelper {
 
       const position = new THREE.Vector3(point.x, point.y, point.z);
 
-      mesh.position.set(position.x, position.y, position.z);
+      mesh.position.copy(position);
 
       mesh.name = point.name;
 
@@ -196,11 +196,11 @@ export class HandHelper {
 
     this.points.forEach((point) => {
       const smoothedPos = point.smoother(point.position);
-      point.mesh.position.set(smoothedPos.x, smoothedPos.y, smoothedPos.z);
+      point.mesh.position.copy(smoothedPos);
     });
   }
 
-  public initAims() {
+  public initialize() {
     this.wristAimDiv.className = 'aim wrist';
     this.indexAimDiv.className = 'aim';
 
@@ -222,12 +222,12 @@ export class HandHelper {
         (keypoint.z ?? 0) * scale + this.wristAimPos.z * 0.001
       );
 
-      this.points[index].position = pos;
+      this.points[index].position.copy(pos);
     });
   }
 
   public update2DAim(wristPos: THREE.Vector3, indexPos: THREE.Vector3) {
-    this.wristAimPos.set(wristPos.x, wristPos.y, wristPos.z);
-    this.indexAimPos.set(indexPos.x, indexPos.y, indexPos.z);
+    this.wristAimPos.copy(wristPos);
+    this.indexAimPos.copy(indexPos);
   }
 }

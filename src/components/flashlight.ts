@@ -8,7 +8,7 @@ export class Flashlight {
 
   constructor() {
     this.light = new THREE.SpotLight(0xffffff, 200, 100, Math.PI / 3.2, 0.2);
-    this.light.position.set(this.position.x, this.position.y, this.position.z);
+    this.light.position.copy(this.position);
     this.light.target.position.set(0, 0, 0);
     this.light.castShadow = true;
     this.light.shadow.mapSize.set(1024, 1024);
@@ -19,6 +19,6 @@ export class Flashlight {
   }
 
   update() {
-    this.light.position.set(this.position.x, this.position.y, this.position.z);
+    this.light.position.copy(this.position);
   }
 }

@@ -5,11 +5,10 @@ export type DetectFacesOptions = {
   video: HTMLVideoElement;
   camera: THREE.PerspectiveCamera;
 };
-
 export class FaceDetector {
   private detector: faceDetection.FaceDetector | null = null;
 
-  async init() {
+  async initialize() {
     this.detector = await faceDetection.createDetector(
       faceDetection.SupportedModels.MediaPipeFaceDetector,
       {
@@ -31,6 +30,7 @@ export class FaceDetector {
 
     const faces = await this.detector.estimateFaces(video);
     const face = faces[0];
+
     if (face) {
       const { box } = face;
 
