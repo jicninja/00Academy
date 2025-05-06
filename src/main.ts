@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 import { createVector3Smoother, easeInOutQuad } from './utils/smoother';
-import { initializeTargets, targets } from './components/targets';
+import { initializeTargets } from './components/targets';
 // Globals
 let camera: THREE.PerspectiveCamera,
   scene: THREE.Scene,
@@ -289,8 +289,9 @@ const initHandDetection = async () => {
 // === Init Everything ===
 const init = async () => {
   initThree();
-  initializeTargets();
-  targets.forEach((target) => scene.add(target));
+
+  const targets = initializeTargets();
+  targets.forEach((target) => scene.add(target.mesh));
 
   animate();
 

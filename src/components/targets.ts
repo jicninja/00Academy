@@ -1,11 +1,24 @@
 import * as THREE from 'three';
 
-export const targets: THREE.Mesh[] = [];
+export class Target {
+  public mesh: THREE.Mesh;
 
-const cubeGeo = new THREE.BoxGeometry();
-const cubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+  constructor(position: THREE.Vector3, color: number = 0x00ff00) {
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial({ color });
+    this.mesh = new THREE.Mesh(geometry, material);
 
-const getStaticCubePositions = () => {
+    this.mesh.position.copy(position);
+    this.mesh.castShadow = this.mesh.receiveShadow = true;
+    this.mesh.rotation.set(
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2
+    );
+  }
+}
+
+const getStaticCubePositions = (): THREE.Vector3[] => {
   return [
     { x: -2, y: 2, z: 0 },
     { x: 2, y: 1, z: -1 },
@@ -23,7 +36,7 @@ const getStaticCubePositions = () => {
   ].map((pos) => new THREE.Vector3(pos.x, pos.y, pos.z));
 };
 
-const getRandomCubePositions = (count: number) => {
+const getRandomCubePositions = (count: number): THREE.Vector3[] => {
   return Array.from(
     { length: count },
     () =>
@@ -35,27 +48,13 @@ const getRandomCubePositions = (count: number) => {
   );
 };
 
-export const createTargets = (positions: THREE.Vector3[]) => {
-  return positions.map((pos) => {
-    const cube = new THREE.Mesh(cubeGeo, cubeMat);
-    cube.position.copy(pos);
-    cube.castShadow = cube.receiveShadow = true;
-    cube.rotation.set(
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2
-    );
+export const initializeTargets = (
+  staticCount: number = 13,
+  randomCount: number = 100
+): Target[] => {
+  const staticPositions = getStaticCubePositions().slice(0, staticCount);
+  const randomPositions = getRandomCubePositions(randomCount);
+  const allPositions = [...staticPositions, ...randomPositions];
 
-    return cube;
-  });
-};
-
-export const initializeTargets = () => {
-  const positions = [
-    ...getStaticCubePositions(),
-    ...getRandomCubePositions(100),
-  ];
-  // const positions = getRandomCubePositions(count);
-  const newTargets = createTargets(positions);
-  targets.push(...newTargets);
+  return allPositions.map((position) => new Target(position));
 };
