@@ -6,18 +6,18 @@ import { initializeWalls } from './components/walls';
 import { ShootScene } from './scenes/shootScene';
 import { VideoDetector } from './detectors/video';
 import { FaceDetector } from './detectors/faceDetector';
+import { Flashlight } from './components/flashlight';
 
 const mainScene = new ShootScene();
 const videoController = new VideoDetector();
 const faceController = new FaceDetector();
+const flashLight = new Flashlight();
 
 const { video } = videoController;
 const { scene } = mainScene;
 
 // Globals
-let camera: THREE.PerspectiveCamera,
-  renderer: THREE.WebGLRenderer,
-  flashLight: THREE.SpotLight;
+let camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer;
 
 let aimMesh: THREE.Mesh;
 let indexFingerTip;
@@ -44,6 +44,7 @@ const initThree = () => {
 
   camera.position.z = 5;
 
+  scene.add(flashLight.light);
   scene.add(camera);
 
   // Renderer
@@ -53,11 +54,6 @@ const initThree = () => {
   document.body.appendChild(renderer.domElement);
 
   // Lighting
-  flashLight = new THREE.SpotLight(0xffffff, 200, 100, Math.PI / 3.2, 0.2);
-  flashLight.position.set(-1.5, -0.5, 6);
-  flashLight.castShadow = true;
-  flashLight.shadow.mapSize.set(1024, 1024);
-  scene.add(flashLight);
 
   // Finger Sphere
   aimMesh = new THREE.Mesh(
@@ -80,6 +76,7 @@ const onWindowResize = () => {
 const animate = () => {
   requestAnimationFrame(animate);
 
+  flashLight.update();
   camera.position.lerp(cameraPos, 0.1);
   camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
@@ -146,9 +143,8 @@ const initHandDetection = async () => {
     //const a = camera.position.clone().add(dir.multiplyScalar(5));
 
     //aimMesh.position.lerp(a, 0.4);
-    flashLight.position.lerp(
-      new THREE.Vector3(normX * 5, normY * 3, camera.position.z),
-      0.1
+    flashLight.setPosition(
+      new THREE.Vector3(normX * 5, normY * 3, camera.position.z)
     );
 
     if (hand.keypoints3D) {
@@ -201,8 +197,9 @@ const init = async () => {
 
   await videoController.initialize();
   await faceController.init();
+  await initHandDetection();
 
-  await faceController.detectFaces(
+  faceController.detectFaces(
     {
       video: videoController.video,
       camera: camera,
@@ -211,7 +208,6 @@ const init = async () => {
       cameraPos = facePosition;
     }
   );
-  await initHandDetection();
 
   mainScene.animateIntroCamera();
 };
