@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
-import { createVector3Smoother } from './utils/smoother';
+import { createVector3Smoother, easeInOutQuad } from './utils/smoother';
 import { initializeTargets, targets } from './components/targets';
 // Globals
 let camera: THREE.PerspectiveCamera,
@@ -18,9 +18,6 @@ const aimDiv = document.getElementById('aim');
 const aimDiv2 = document.getElementById('aim2');
 
 // === Utility Functions ===
-const easeInOutQuad = (t: number) => {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-};
 
 const smoothWristPos = createVector3Smoother();
 const smoothIndexPos = createVector3Smoother(0.8);

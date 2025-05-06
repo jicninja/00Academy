@@ -23,3 +23,9 @@ export const createVector3Smoother = (smoothing = 0.9) => {
     );
   };
 };
+
+export const easeInOutQuad = (progress: number) => {
+  return progress < 0.5
+    ? 2 * progress * progress
+    : -1 + (4 - 2 * progress) * progress;
+};
