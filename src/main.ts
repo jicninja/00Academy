@@ -1,17 +1,18 @@
 import * as THREE from 'three';
-import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 import { createVector3Smoother } from './utils/smoother';
 import { initializeTargets } from './components/targets';
 import { initializeWalls } from './components/walls';
 import { ShootScene } from './scenes/shootScene';
 import { VideoDetector } from './detectors/video';
+import { FaceDetector } from './detectors/faceDetector';
 
-const MainScene = new ShootScene();
-const VideoController = new VideoDetector();
+const mainScene = new ShootScene();
+const videoController = new VideoDetector();
+const faceController = new FaceDetector();
 
-const { video } = VideoController;
-const { scene } = MainScene;
+const { video } = videoController;
+const { scene } = mainScene;
 
 // Globals
 let camera: THREE.PerspectiveCamera,
@@ -82,44 +83,6 @@ const animate = () => {
   camera.position.lerp(cameraPos, 0.1);
   camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
-};
-
-// === Video Setup ===
-
-// === Face Detection ===
-const initFaceDetection = async () => {
-  const detector = await faceDetection.createDetector(
-    faceDetection.SupportedModels.MediaPipeFaceDetector,
-    {
-      runtime: 'mediapipe',
-      solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
-      modelType: 'short',
-    }
-  );
-
-  const detectFaces = async () => {
-    const faces = await detector.estimateFaces(video);
-    const face = faces[0];
-    if (face) {
-      const { box } = face;
-
-      const faceSize = Math.max(box.xMax - box.xMin, box.yMax - box.yMin);
-
-      const depth = THREE.MathUtils.clamp(10 - faceSize / 50, 2, 20);
-
-      const centerX = box.xMin + (box.xMax - box.xMin) / 2;
-      const centerY = box.yMin + (box.yMax - box.yMin) / 2;
-
-      const normX = (centerX / video.videoWidth) * 2 - 1;
-      const normY = Math.max(-(centerY / video.videoHeight) * 2 + 1, -0.5);
-      const targetZ = camera.position.z + (depth - camera.position.z) * 0.9;
-
-      cameraPos.set(-normX * 5, normY * 3, targetZ);
-    }
-    requestAnimationFrame(detectFaces);
-  };
-
-  detectFaces();
 };
 
 // === Hand Detection ===
@@ -236,11 +199,21 @@ const init = async () => {
 
   animate();
 
-  await VideoController.initialize();
-  await initFaceDetection();
+  await videoController.initialize();
+  await faceController.init();
+
+  await faceController.detectFaces(
+    {
+      video: videoController.video,
+      camera: camera,
+    },
+    (facePosition) => {
+      cameraPos = facePosition;
+    }
+  );
   await initHandDetection();
 
-  MainScene.animateIntroCamera();
+  mainScene.animateIntroCamera();
 };
 
 init();
