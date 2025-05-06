@@ -17,143 +17,14 @@ const cubes = [];
 const aimDiv = document.getElementById('aim');
 const aimDiv2 = document.getElementById('aim2');
 
-const defaultHand = [
-  {
-    x: 1.6427661699799072,
-    y: -0.19020156944192756,
-    z: -0.166473388671875,
-    name: 'wrist',
-  },
-  {
-    x: 1.2769354542342197,
-    y: -0.056832973007334364,
-    z: 0.019464492797851562,
-    name: 'thumb_cmc',
-  },
-  {
-    x: 0.9790010599044334,
-    y: 0.0640668532808889,
-    z: 0.06191253662109375,
-    name: 'thumb_mcp',
-  },
-  {
-    x: 0.6995394674685966,
-    y: 0.22287843739591728,
-    z: 0.1546478271484375,
-    name: 'thumb_ip',
-  },
-  {
-    x: 0.4942132008818161,
-    y: 0.35976225500904213,
-    z: 0.105438232421875,
-    name: 'thumb_tip',
-  },
-  {
-    x: 1.0322854144123566,
-    y: 0.5787921323438753,
-    z: -0.022125244140625,
-    name: 'index_finger_mcp',
-  },
-  {
-    x: 0.8652211946991455,
-    y: 0.8155020325442423,
-    z: 0.06641387939453125,
-    name: 'index_finger_pip',
-  },
-  {
-    x: 0.7593564165380966,
-    y: 0.9811897388657201,
-    z: 0.1454925537109375,
-    name: 'index_finger_dip',
-  },
-  {
-    x: 0.6847436947372925,
-    y: 1.0891758835872283,
-    z: 0.44097900390625,
-    name: 'index_finger_tip',
-  },
-  {
-    x: 1.2619141314734887,
-    y: 0.6958332656880487,
-    z: -0.05092620849609375,
-    name: 'middle_finger_mcp',
-  },
-  {
-    x: 1.1265928333250057,
-    y: 1.0351704991420378,
-    z: 0.07373809814453125,
-    name: 'middle_finger_pip',
-  },
-  {
-    x: 1.0836947185543548,
-    y: 1.1879691294392218,
-    z: 0.2935791015625,
-    name: 'middle_finger_dip',
-  },
-  {
-    x: 1.007411520704366,
-    y: 1.3581665418108573,
-    z: 0.5145263671875,
-    name: 'middle_finger_tip',
-  },
-  {
-    x: 1.4809902606156837,
-    y: 0.7202776194547881,
-    z: 0.003964900970458984,
-    name: 'ring_finger_mcp',
-  },
-  {
-    x: 1.4291265362498533,
-    y: 0.9971688128074278,
-    z: 0.1325225830078125,
-    name: 'ring_finger_pip',
-  },
-  {
-    x: 1.353815052434541,
-    y: 1.1752258799036612,
-    z: 0.31402587890625,
-    name: 'ring_finger_dip',
-  },
-  {
-    x: 1.2822640163448822,
-    y: 1.342780273314344,
-    z: 0.535888671875,
-    name: 'ring_finger_tip',
-  },
-  {
-    x: 1.6949337569621574,
-    y: 0.627803308795916,
-    z: 0.0618743896484375,
-    name: 'pinky_finger_mcp',
-  },
-  {
-    x: 1.763933695628978,
-    y: 0.8358869700690378,
-    z: 0.07541656494140625,
-    name: 'pinky_finger_pip',
-  },
-  {
-    x: 1.8207584542778503,
-    y: 1.032779831345903,
-    z: 0.15960693359375,
-    name: 'pinky_finger_dip',
-  },
-  {
-    x: 1.8166963977364075,
-    y: 1.1729585564693084,
-    z: 0.36590576171875,
-    name: 'pinky_finger_tip',
-  },
-];
-
 // === Utility Functions ===
-const easeInOutQuad = (t) => {
+const easeInOutQuad = (t: number) => {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 };
 
 const createSmoother = (smoothing = 0.9) => {
-  let previousValue = null;
-  return (currentValue) => {
+  let previousValue: number | null = null;
+  return (currentValue: number) => {
     if (previousValue === null) previousValue = currentValue;
     const smoothedValue =
       previousValue * smoothing + currentValue * (1 - smoothing);
@@ -166,7 +37,7 @@ const createVector3Smoother = (smoothing = 0.9) => {
   const smoothX = createSmoother(smoothing);
   const smoothY = createSmoother(smoothing);
   const smoothZ = createSmoother(smoothing);
-  return (currentVector) => {
+  return (currentVector: THREE.Vector3) => {
     return new THREE.Vector3(
       smoothX(currentVector.x),
       smoothY(currentVector.y),
@@ -178,7 +49,11 @@ const createVector3Smoother = (smoothing = 0.9) => {
 const smoothWristPos = createVector3Smoother();
 const smoothIndexPos = createVector3Smoother(0.8);
 
-const createCubes = (positions, geometry, material) => {
+const createCubes = (
+  positions: THREE.Vector3[],
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material
+) => {
   positions.forEach((pos) => {
     const cube = new THREE.Mesh(geometry, material);
     cube.position.copy(pos);
@@ -448,9 +323,9 @@ const initHandDetection = async () => {
     const normX = -((indexFinger.x / video.videoWidth) * 2 - 1);
     const normY = -(indexFinger.y / video.videoHeight) * 2 + 1;
 
-    const vector = new THREE.Vector3(normX, normY, 0.5).unproject(camera);
-    const dir = vector.sub(camera.position).normalize();
-    const a = camera.position.clone().add(dir.multiplyScalar(5));
+    //const vector = new THREE.Vector3(normX, normY, 0.5).unproject(camera);
+    //const dir = vector.sub(camera.position).normalize();
+    //const a = camera.position.clone().add(dir.multiplyScalar(5));
 
     //aimMesh.position.lerp(a, 0.4);
     flashLight.position.lerp(
@@ -458,9 +333,13 @@ const initHandDetection = async () => {
       0.1
     );
 
-    if (hand.keypoints3D && false) {
+    if (hand.keypoints3D) {
       scene.children = scene.children.filter(
-        (child) => !(child.geometry instanceof THREE.SphereGeometry)
+        (child) =>
+          !(
+            child instanceof THREE.Mesh &&
+            child.geometry instanceof THREE.SphereGeometry
+          )
       );
 
       console.log('hand.keypoints3D', hand.keypoints3D);
@@ -472,18 +351,13 @@ const initHandDetection = async () => {
         });
         const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 
-        keypoint.x *= 10;
-        keypoint.y *= 10;
-        keypoint.z *= 10;
+        const scale = 10;
+        keypoint.x = -keypoint.x * scale + wristPos.x * 0.001;
+        keypoint.y = -keypoint.y * scale - wristPos.y * 0.001;
+        keypoint.z = (keypoint.z ?? 0) * scale + wristPos.z * 0.001;
 
-        keypoint.x = -keypoint.x;
-        keypoint.y = -keypoint.y;
-        keypoint.z = -keypoint.z;
-
-        keypoint.x += wristPos.x * 0.001;
-        keypoint.y += wristPos.y * 0.001;
-        keypoint.z += wristPos.z * 0.001;
         sphere.position.set(keypoint.x, keypoint.y, keypoint.z);
+        sphere.position.set(keypoint.x, keypoint.y, keypoint.z ?? 0);
 
         scene.add(sphere);
       });
