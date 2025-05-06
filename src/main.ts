@@ -1,15 +1,20 @@
 import * as THREE from 'three';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
-import { createVector3Smoother, easeInOutQuad } from './utils/smoother';
+import { createVector3Smoother } from './utils/smoother';
 import { initializeTargets } from './components/targets';
 import { initializeWalls } from './components/walls';
+import { ShootScene } from './scenes/shootScene';
+
+const MainScene = new ShootScene();
+const { scene } = MainScene;
+
 // Globals
 let camera: THREE.PerspectiveCamera,
-  scene: THREE.Scene,
   renderer: THREE.WebGLRenderer,
   flashLight: THREE.SpotLight,
   video: HTMLVideoElement;
+
 let aimMesh: THREE.Mesh;
 let indexFingerTip;
 
@@ -25,8 +30,6 @@ const smoothIndexPos = createVector3Smoother(0.8);
 
 // === THREE.js Setup ===
 const initThree = () => {
-  scene = new THREE.Scene();
-
   // Camera Setup
   camera = new THREE.PerspectiveCamera(
     0,
@@ -34,7 +37,10 @@ const initThree = () => {
     0.1,
     1000
   );
+
   camera.position.z = 5;
+
+  scene.add(camera);
 
   // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -43,7 +49,6 @@ const initThree = () => {
   document.body.appendChild(renderer.domElement);
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0x00ffff, 0.2));
   flashLight = new THREE.SpotLight(0xffffff, 200, 100, Math.PI / 3.2, 0.2);
   flashLight.position.set(-1.5, -0.5, 6);
   flashLight.castShadow = true;
@@ -59,23 +64,6 @@ const initThree = () => {
   scene.add(aimMesh);
 
   window.addEventListener('resize', onWindowResize);
-};
-
-const animateFOVTransition = (
-  camera: THREE.PerspectiveCamera,
-  startFOV: number,
-  endFOV: number,
-  duration: number
-) => {
-  const startTime = performance.now();
-  const animate = () => {
-    const elapsed = performance.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    camera.fov = startFOV + (endFOV - startFOV) * easeInOutQuad(progress);
-    camera.updateProjectionMatrix();
-    if (progress < 1) requestAnimationFrame(animate);
-  };
-  animate();
 };
 
 const onWindowResize = () => {
@@ -259,7 +247,7 @@ const init = async () => {
   await initFaceDetection();
   await initHandDetection();
 
-  animateFOVTransition(camera, 0, 55, 2000);
+  MainScene.animateIntroCamera();
 };
 
 init();
