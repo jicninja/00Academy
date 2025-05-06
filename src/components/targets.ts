@@ -10,6 +10,7 @@ export class Target {
 
     this.mesh.position.copy(position);
     this.mesh.castShadow = this.mesh.receiveShadow = true;
+
     this.mesh.rotation.set(
       Math.random() * Math.PI * 2,
       Math.random() * Math.PI * 2,

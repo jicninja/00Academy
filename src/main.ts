@@ -3,6 +3,7 @@ import * as faceDetection from '@tensorflow-models/face-detection';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 import { createVector3Smoother, easeInOutQuad } from './utils/smoother';
 import { initializeTargets } from './components/targets';
+import { initializeWalls } from './components/walls';
 // Globals
 let camera: THREE.PerspectiveCamera,
   scene: THREE.Scene,
@@ -57,25 +58,6 @@ const initThree = () => {
   aimMesh.castShadow = true;
   scene.add(aimMesh);
 
-  // Room Walls
-  const wallMat = createWallMaterial('./assets/grid.jpg');
-  const wallGeo = new THREE.PlaneGeometry(100, 100);
-  const wallConfigs = [
-    { rot: [-Math.PI / 2, 0, 0], pos: [0, -2, 0] }, // Floor
-    { rot: [Math.PI / 2, 0, 0], pos: [0, 10, 0] }, // Ceiling
-    { rot: [0, Math.PI / 2, 0], pos: [-10, 4, 0] }, // Left
-    { rot: [0, -Math.PI / 2, 0], pos: [10, 4, 0] }, // Right
-    { rot: [0, 0, 0], pos: [0, 4, -100] }, // Back
-  ];
-  wallConfigs.forEach(({ rot, pos }) =>
-    createWall(
-      wallGeo,
-      wallMat,
-      new THREE.Euler(...rot),
-      new THREE.Vector3(...pos)
-    )
-  );
-
   window.addEventListener('resize', onWindowResize);
 };
 
@@ -100,31 +82,6 @@ const onWindowResize = () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-};
-
-const createWallMaterial = (texturePath: string) => {
-  const texture = new THREE.TextureLoader().load(texturePath);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(5, 5);
-  return new THREE.MeshStandardMaterial({
-    map: texture,
-    emissiveMap: texture,
-    emissive: new THREE.Color(0x00ff00),
-    emissiveIntensity: 0.1,
-  });
-};
-
-const createWall = (
-  geometry: THREE.PlaneGeometry,
-  material: THREE.MeshStandardMaterial,
-  rotation: THREE.Euler,
-  position: THREE.Vector3
-) => {
-  const wall = new THREE.Mesh(geometry, material);
-  wall.rotation.copy(rotation);
-  wall.position.copy(position);
-  wall.receiveShadow = true;
-  scene.add(wall);
 };
 
 // === Animation Loop ===
@@ -292,6 +249,9 @@ const init = async () => {
 
   const targets = initializeTargets();
   targets.forEach((target) => scene.add(target.mesh));
+
+  const walls = initializeWalls();
+  walls.forEach((wall) => scene.add(wall.mesh));
 
   animate();
 
