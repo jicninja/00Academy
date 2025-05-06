@@ -27,22 +27,21 @@ const { video } = videoController;
 const { scene } = mainScene;
 
 // Globals
-let camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+const cameraPos = new THREE.Vector3(0, 0, 5);
 
-let cameraPos = new THREE.Vector3(0, 0, 5);
+const camera = new THREE.PerspectiveCamera(
+  0,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
 
 // === THREE.js Setup ===
 const initializeThree = () => {
   // Camera Setup
-  camera = new THREE.PerspectiveCamera(
-    0,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
   camera.position.copy(cameraPos);
   // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   document.body.appendChild(renderer.domElement);
@@ -87,7 +86,7 @@ const handleDetectHands = (handData: HandCallbackOptions) => {
 };
 
 const handleDetectFace = (facePosition: THREE.Vector3) => {
-  cameraPos = facePosition;
+  cameraPos.copy(facePosition);
 };
 
 // === Init Everything ===
