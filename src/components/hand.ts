@@ -1,4 +1,8 @@
-export const defaultHand = [
+import * as THREE from 'three';
+import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
+import { createVector3Smoother } from '../utils/smoother';
+
+const defaultHand = [
   {
     x: 1.6427661699799072,
     y: -0.19020156944192756,
@@ -126,3 +130,104 @@ export const defaultHand = [
     name: 'pinky_finger_tip',
   },
 ];
+
+export class HandHelper {
+  private geometry: THREE.SphereGeometry;
+  private material: THREE.MeshStandardMaterial;
+
+  private wristAimSmoother = createVector3Smoother();
+  private indexAimSmoother = createVector3Smoother();
+
+  private wristAimPos: THREE.Vector3 = new THREE.Vector3();
+  private indexAimPos: THREE.Vector3 = new THREE.Vector3();
+
+  private wristAimDiv: HTMLDivElement;
+  private indexAimDiv: HTMLDivElement;
+
+  public meshGroup: THREE.Group;
+  public points: {
+    smoother: ReturnType<typeof createVector3Smoother>;
+    mesh: THREE.Mesh;
+    position: THREE.Vector3;
+  }[];
+
+  constructor() {
+    this.geometry = new THREE.SphereGeometry(0.05, 16, 16);
+    this.material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+    this.wristAimDiv = document.createElement('div');
+    this.indexAimDiv = document.createElement('div');
+
+    this.meshGroup = new THREE.Group();
+
+    this.points = this.createHandPoints();
+  }
+
+  private createHandPoints() {
+    return defaultHand.map((point) => {
+      const smoother = createVector3Smoother();
+
+      const mesh = new THREE.Mesh(this.geometry, this.material);
+
+      const position = new THREE.Vector3(point.x, point.y, point.z);
+
+      mesh.position.set(position.x, position.y, position.z);
+
+      mesh.name = point.name;
+
+      this.meshGroup.add(mesh);
+
+      return {
+        smoother,
+        mesh,
+        position,
+      };
+    });
+  }
+
+  public update() {
+    const indexSmoothed = this.indexAimSmoother(this.indexAimPos);
+    const wristSmoothed = this.wristAimSmoother(this.wristAimPos);
+
+    this.wristAimDiv.style.left = `${wristSmoothed.x}px`;
+    this.wristAimDiv.style.top = `${wristSmoothed.y}px`;
+    this.indexAimDiv.style.left = `${indexSmoothed.x}px`;
+    this.indexAimDiv.style.top = `${indexSmoothed.y}px`;
+
+    this.points.forEach((point) => {
+      const smoothedPos = point.smoother(point.position);
+      point.mesh.position.set(smoothedPos.x, smoothedPos.y, smoothedPos.z);
+    });
+  }
+
+  public initAims() {
+    this.wristAimDiv.className = 'aim wrist';
+    this.indexAimDiv.className = 'aim';
+
+    document.body.appendChild(this.wristAimDiv);
+    document.body.appendChild(this.indexAimDiv);
+  }
+
+  public update3DAim(hand: handPoseDetection.Hand) {
+    if (!hand?.keypoints3D) {
+      return;
+    }
+
+    hand.keypoints3D.forEach((keypoint, index: number) => {
+      const scale = 10;
+
+      const pos = new THREE.Vector3(
+        -keypoint.x * scale + this.wristAimPos.x * 0.001,
+        -keypoint.y * scale - this.wristAimPos.y * 0.001,
+        (keypoint.z ?? 0) * scale + this.wristAimPos.z * 0.001
+      );
+
+      this.points[index].position = pos;
+    });
+  }
+
+  public update2DAim(wristPos: THREE.Vector3, indexPos: THREE.Vector3) {
+    this.indexAimPos.set(wristPos.x, wristPos.y, wristPos.z);
+    this.wristAimPos.set(indexPos.x, indexPos.y, indexPos.z);
+  }
+}
