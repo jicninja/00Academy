@@ -5,15 +5,18 @@ import { createVector3Smoother } from './utils/smoother';
 import { initializeTargets } from './components/targets';
 import { initializeWalls } from './components/walls';
 import { ShootScene } from './scenes/shootScene';
+import { VideoDetector } from './detectors/video';
 
 const MainScene = new ShootScene();
+const VideoController = new VideoDetector();
+
+const { video } = VideoController;
 const { scene } = MainScene;
 
 // Globals
 let camera: THREE.PerspectiveCamera,
   renderer: THREE.WebGLRenderer,
-  flashLight: THREE.SpotLight,
-  video: HTMLVideoElement;
+  flashLight: THREE.SpotLight;
 
 let aimMesh: THREE.Mesh;
 let indexFingerTip;
@@ -82,16 +85,6 @@ const animate = () => {
 };
 
 // === Video Setup ===
-const setupVideo = async () => {
-  video = Object.assign(document.createElement('video'), {
-    autoplay: true,
-    playsInline: true,
-  });
-  document.body.appendChild(video);
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  video.srcObject = stream;
-  await video.play();
-};
 
 // === Face Detection ===
 const initFaceDetection = async () => {
@@ -243,7 +236,7 @@ const init = async () => {
 
   animate();
 
-  await setupVideo();
+  await VideoController.initialize();
   await initFaceDetection();
   await initHandDetection();
 
