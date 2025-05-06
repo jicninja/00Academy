@@ -227,7 +227,7 @@ export class HandHelper {
   }
 
   public update2DAim(wristPos: THREE.Vector3, indexPos: THREE.Vector3) {
-    this.indexAimPos.set(wristPos.x, wristPos.y, wristPos.z);
-    this.wristAimPos.set(indexPos.x, indexPos.y, indexPos.z);
+    this.wristAimPos.set(wristPos.x, wristPos.y, wristPos.z);
+    this.indexAimPos.set(indexPos.x, indexPos.y, indexPos.z);
   }
 }

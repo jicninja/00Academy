@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-class Wall {
+export class Wall {
   private static wallGeo = new THREE.PlaneGeometry(100, 100);
 
   public mesh: THREE.Mesh;
