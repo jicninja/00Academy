@@ -54,7 +54,7 @@ const handleDetectFace = (facePosition: THREE.Vector3) => {
 };
 
 function animate() {
-  const delta = renderer.info.render.frame * 0.001;
+  intro.update();
   mainScene.update(cameraPos);
   sceneManager.render(renderer);
   flashLight.update();
@@ -68,14 +68,13 @@ const initialize = async () => {
   mainScene.scene.add(handObject.meshGroup);
 
   intro.onAnimationComplete(() => {
-    sceneManager.fade(renderer, intro, mainScene, () => {
-      isIntroDone = true;
-    });
+    sceneManager.fade(renderer, intro, mainScene, () => {});
   });
 
   // Renderer
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -88,6 +87,12 @@ const initialize = async () => {
   await handsController.initialize();
 
   sceneManager.fade(renderer, mainScene, intro);
+
+  setTimeout(() => {
+    console.log('intro', intro);
+
+    //sceneManager.fade(renderer, mainScene, intro);
+  }, 100);
 
   animate();
 
