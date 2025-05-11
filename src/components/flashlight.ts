@@ -7,7 +7,7 @@ export class Flashlight {
   private smoother = createVector3Smoother(0.9);
 
   constructor() {
-    this.light = new THREE.SpotLight(0xffffff, 200, 100, Math.PI / 3.2, 0.2);
+    this.light = new THREE.SpotLight(0xffffff, 20, 50, Math.PI / 5, 1, 0.5);
     this.light.position.copy(this.position);
     this.light.target.position.set(0, 0, 0);
     this.light.castShadow = true;

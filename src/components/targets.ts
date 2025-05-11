@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-
 export class Target {
   public mesh: THREE.Mesh;
 
@@ -57,7 +56,5 @@ export const initializeTargets = (
   const randomPositions = getRandomCubePositions(randomCount);
   const allPositions = [...staticPositions, ...randomPositions];
 
-  return allPositions.map(
-    (position) => new Target(position, Math.random() * 0xffffff)
-  );
+  return allPositions.map((position) => new Target(position));
 };

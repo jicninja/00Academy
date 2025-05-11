@@ -28,7 +28,7 @@ export class Wall {
   }
 }
 
-export const initializeWalls = () => {
+export const initializeWalls = (): Wall[] => {
   const wallConfigs = [
     { rotation: [-Math.PI / 2, 0, 0], position: [0, -2, 0] }, // Floor
     { rotation: [Math.PI / 2, 0, 0], position: [0, 10, 0] }, // Ceiling
