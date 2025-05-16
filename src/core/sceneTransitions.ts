@@ -11,8 +11,7 @@ export class SceneTransition {
   private scene: THREE.Scene;
   private material: THREE.ShaderMaterial;
   public currentScene?: SceneTypes;
-  private _currentScene: THREE.Scene;
-  private _currentCamera: THREE.Camera;
+
   public isAnimation = false;
 
   constructor() {
@@ -20,22 +19,11 @@ export class SceneTransition {
     const height = window.innerHeight;
 
     this.rtA = new THREE.WebGLRenderTarget(width, height, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBFormat,
-      stencilBuffer: false,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
-
-    this.rtA.texture.colorSpace = THREE.LinearSRGBColorSpace;
-
     this.rtB = new THREE.WebGLRenderTarget(width, height, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBFormat,
-      stencilBuffer: false,
+      colorSpace: THREE.LinearSRGBColorSpace,
     });
-
-    this.rtB.texture.colorSpace = THREE.LinearSRGBColorSpace;
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.scene = new THREE.Scene();
@@ -52,42 +40,29 @@ export class SceneTransition {
           vUv = uv;
           gl_Position = vec4(position.xy, 0.0, 1.0);
         }
-      `,
+        `,
       fragmentShader: `
-        uniform sampler2D tA;
-        uniform sampler2D tB;
-        uniform float mixRatio;
-        varying vec2 vUv;
+    uniform sampler2D tA;
+    uniform sampler2D tB;
+    uniform float mixRatio;
+    varying vec2 vUv;
 
-        vec3 toLinear(vec3 c) {
-        return pow(c, vec3(2.2));
-        }
+    void main() {
+      // Sample the textures directly. They are already in linear space.
+      vec4 texA = texture2D(tA, vUv);
+      vec4 texB = texture2D(tB, vUv);
 
-        vec3 toSRGB(vec3 c) {
-        return pow(c, vec3(0.22));
-        }
+      vec4 mixed = mix(texA, texB, mixRatio);
 
-        void main() {
-            vec4 texA = texture2D(tA, vUv);
-            vec4 texB = texture2D(tB, vUv);
+      mixed.rgb = pow(mixed.rgb, vec3(1.0/2.2));
 
-            vec3 colorA = toLinear(texA.rgb);
-            vec3 colorB = toLinear(texB.rgb);
-
-            vec3 blended = mix(colorA, colorB, mixRatio);
-
-            vec3 finalColor = toSRGB(blended);
-            gl_FragColor = vec4(finalColor, 1.0);
-        }
-      `,
-      transparent: false,
+      gl_FragColor = vec4(mixed.rgb, mixRatio);
+    }`,
+      transparent: true,
     });
 
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
     this.scene.add(quad);
-
-    this._currentScene = new THREE.Scene(); // Initialize with a default
-    this._currentCamera = new THREE.PerspectiveCamera(); // Safe fallback
   }
 
   public setCurrentScene(newScene: SceneTypes) {
@@ -100,21 +75,28 @@ export class SceneTransition {
     sceneOutro: SceneTypes,
     onComplete?: () => void
   ): void {
-    const duration = 1500;
+    const duration = 2000;
     const start = performance.now();
+
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    this.material.uniforms.mixRatio.value = 0;
 
     // Render scenes to render targets
 
+    this.material.uniforms.tA.value = this.rtA.texture;
+    this.material.uniforms.tB.value = this.rtB.texture;
+
     renderer.setRenderTarget(this.rtA);
+    renderer.clear();
     renderer.render(sceneIntro.scene, sceneIntro.camera);
 
     renderer.setRenderTarget(this.rtB);
+    renderer.clear();
+
     renderer.render(sceneOutro.scene, sceneOutro.camera);
 
     renderer.setRenderTarget(null);
-
-    this.material.uniforms.tA.value = this.rtA.texture;
-    this.material.uniforms.tB.value = this.rtB.texture;
 
     const animate = () => {
       this.isAnimation = true;
@@ -122,14 +104,30 @@ export class SceneTransition {
       const t = Math.min((now - start) / duration, 1);
       this.material.uniforms.mixRatio.value = t;
 
+      renderer.setRenderTarget(this.rtB);
+      renderer.clear();
+
+      renderer.render(sceneOutro.scene, sceneOutro.camera);
+
+      renderer.setRenderTarget(null);
+
       renderer.render(this.scene, this.camera);
 
       if (t < 1) {
         requestAnimationFrame(animate);
       } else {
+        this.material.uniforms.tA.value = null;
+        this.material.uniforms.tB.value = null;
+
+        renderer.setRenderTarget(this.rtA);
+        renderer.clear();
+
+        renderer.setRenderTarget(this.rtB);
+        renderer.clear();
+
+        renderer.setRenderTarget(null);
+
         this.currentScene = sceneOutro;
-        this._currentScene = sceneOutro.scene;
-        this._currentCamera = sceneOutro.camera;
         this.isAnimation = false;
 
         onComplete?.();
@@ -140,9 +138,11 @@ export class SceneTransition {
   }
 
   public render(renderer: THREE.WebGLRenderer) {
+    if (!this.currentScene) return;
+
     renderer.render(
-      this.isAnimation ? this.scene : this._currentScene,
-      this.isAnimation ? this.camera : this._currentCamera
+      this.isAnimation ? this.scene : this.currentScene?.scene,
+      this.isAnimation ? this.camera : this.currentScene?.camera
     );
   }
 

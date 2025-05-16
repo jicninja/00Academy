@@ -15,6 +15,7 @@ export class GenericScene {
     duration: number = 600
   ) => {
     const startTime = performance.now();
+
     const animate = () => {
       const camera = this.scene.children.find(
         (child) => child instanceof THREE.PerspectiveCamera
@@ -26,6 +27,7 @@ export class GenericScene {
       const progress = Math.min(elapsed / duration, 1);
 
       camera.fov = startFOV + (endFOV - startFOV) * easeInOutQuad(progress);
+
       camera.updateProjectionMatrix();
 
       this.isIntroAnimating = camera.fov < endFOV - 1;

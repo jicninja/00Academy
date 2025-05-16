@@ -135,12 +135,12 @@ export class JimmyScene extends GenericScene {
   }
 
   private setupJimmyMaterials(child: THREE.Mesh) {
-    child.castShadow = true;
-    child.receiveShadow = true;
-
-    if (child.material instanceof THREE.MeshStandardMaterial) {
-      child.material.metalness = 0;
-      child.material.roughness = 1;
+    if (
+      child.material instanceof THREE.MeshStandardMaterial &&
+      child.name !== 'explosion'
+    ) {
+      child.castShadow = true;
+      child.receiveShadow = true;
     }
   }
 
@@ -177,22 +177,21 @@ export class JimmyScene extends GenericScene {
           animateMaterial();
         }
 
+        this.isIntroDone = true;
+
         this.animateIntroCamera(55, 1, interval);
 
         setTimeout(() => {
-          console.log(
-            'this.onCompleteCallback',
-            typeof this.onCompleteCallback
-          );
-
           if (this.onCompleteCallback) {
             this.onCompleteCallback();
           }
         }, interval);
       }
 
-      mixer.update(this.clock.getDelta());
-      requestAnimationFrame(updateAnimation);
+      if (!this.isIntroDone) {
+        mixer.update(this.clock.getDelta());
+        requestAnimationFrame(updateAnimation);
+      }
     };
 
     updateAnimation();

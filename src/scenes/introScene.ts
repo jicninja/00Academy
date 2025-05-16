@@ -8,6 +8,7 @@ export class IntroScene extends GenericScene {
   private renderTarget: THREE.WebGLRenderTarget;
   private plane: THREE.Mesh;
   private renderer: THREE.WebGLRenderer;
+  private startTime: number = 0;
 
   constructor(renderer: THREE.WebGLRenderer) {
     super();
@@ -46,6 +47,21 @@ export class IntroScene extends GenericScene {
   }
 
   public update() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Animate plane's X position from width * 2 to width / 2 over time
+    const duration = 1.0; // seconds
+    if (!this.startTime) {
+      this.startTime = performance.now();
+    }
+    const elapsed = (performance.now() - this.startTime) / 4000;
+    const t = Math.min(elapsed / duration, 1);
+    const startX = width * 2;
+    const endX = width / 2;
+    const currentX = startX + (endX - startX) * t;
+    this.plane.position.set(currentX, height / 2, 0);
+
     this.renderer.setRenderTarget(this.renderTarget);
     this.renderer.render(this.jimmyScene.scene, this.jimmyScene.camera);
     this.renderer.setRenderTarget(null);

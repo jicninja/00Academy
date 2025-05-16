@@ -15,6 +15,10 @@ import {
 import { SceneTransition } from './core/sceneTransitions';
 import { IntroScene } from './scenes/introScene';
 
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+
 const mainScene = new ShootScene();
 const flashLight = new Flashlight();
 
@@ -28,7 +32,6 @@ const sceneManager = new SceneTransition();
 const { video } = videoController;
 
 // Globals
-const renderer = new THREE.WebGLRenderer({ antialias: true });
 
 const intro = new IntroScene(renderer);
 
@@ -62,12 +65,17 @@ function animate() {
   requestAnimationFrame(animate);
 }
 const initialize = async () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  renderer.shadowMap.enabled = true;
+
   sceneManager.setCurrentScene(intro);
 
   mainScene.scene.add(flashLight.light);
   mainScene.scene.add(handObject.meshGroup);
 
   intro.onAnimationComplete(() => {
+    console.log('entro aca');
     sceneManager.fade(renderer, intro, mainScene, () => {});
   });
 
@@ -75,6 +83,7 @@ const initialize = async () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
   renderer.setClearColor(0x000000);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -85,14 +94,6 @@ const initialize = async () => {
   await videoController.initialize();
   await faceController.initialize();
   await handsController.initialize();
-
-  sceneManager.fade(renderer, mainScene, intro);
-
-  setTimeout(() => {
-    console.log('intro', intro);
-
-    //sceneManager.fade(renderer, mainScene, intro);
-  }, 100);
 
   animate();
 
