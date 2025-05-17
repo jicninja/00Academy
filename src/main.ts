@@ -66,8 +66,11 @@ function animate() {
 }
 const initialize = async () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
-
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  renderer.setClearColor(0x000000);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   sceneManager.setCurrentScene(intro);
 
@@ -75,22 +78,14 @@ const initialize = async () => {
   mainScene.scene.add(handObject.meshGroup);
 
   intro.onAnimationComplete(() => {
-    console.log('entro aca');
-    sceneManager.fade(renderer, intro, mainScene, () => {});
+    sceneManager.fade(renderer, intro, mainScene, async () => {
+      await handObject.initialize();
+    });
   });
-
-  // Renderer
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-  renderer.setClearColor(0x000000);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   document.body.appendChild(renderer.domElement);
   window.addEventListener('resize', onWindowResize);
 
-  await handObject.initialize();
   await videoController.initialize();
   await faceController.initialize();
   await handsController.initialize();

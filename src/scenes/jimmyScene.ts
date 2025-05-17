@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { GenericScene } from './genericScene';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
+type SkinnedAnimation = {
+  clip: THREE.AnimationClip;
+  model: THREE.Scene;
+};
+
 export class JimmyScene extends GenericScene {
   private cannonModel?: THREE.Scene;
   private jimmyModel?: THREE.Scene;
@@ -10,6 +15,7 @@ export class JimmyScene extends GenericScene {
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock = new THREE.Clock();
   private onCompleteCallback?: () => void;
+  private skinnedAnim?: SkinnedAnimation;
 
   constructor(renderer: THREE.WebGLRenderer) {
     super();
@@ -35,17 +41,17 @@ export class JimmyScene extends GenericScene {
 
     directionalLight.shadow.mapSize.width = 1024;
     directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.radius = 10; // Increase the radius for softer shadows
+    directionalLight.shadow.radius = 10;
     this.scene.add(directionalLight);
 
     this.initScene();
 
     const floorGeometry = new THREE.PlaneGeometry(100, 100);
-    const floorMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
+    const floorMaterial = new THREE.ShadowMaterial({ opacity: 1 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -2;
+    floor.position.y = -1.75;
     floor.receiveShadow = true;
 
     this.scene.add(floor);
@@ -127,7 +133,10 @@ export class JimmyScene extends GenericScene {
       });
 
       if (gltf.animations && gltf.animations.length > 0) {
-        this.playAnimation(gltf.animations[0], model);
+        this.skinnedAnim = {
+          clip: gltf.animations[0],
+          model,
+        };
       }
 
       this.scene.add(model);
@@ -144,7 +153,13 @@ export class JimmyScene extends GenericScene {
     }
   }
 
-  private playAnimation(clip: THREE.AnimationClip, model: THREE.Scene) {
+  public play() {
+    if (this.skinnedAnim) {
+      this.playAnimation(this.skinnedAnim);
+    }
+  }
+
+  private playAnimation({ clip, model }: SkinnedAnimation) {
     const mixer = new THREE.AnimationMixer(model);
     const action = mixer.clipAction(clip);
 
