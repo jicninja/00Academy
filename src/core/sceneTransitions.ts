@@ -25,6 +25,9 @@ export class SceneTransition {
       colorSpace: THREE.LinearSRGBColorSpace,
     });
 
+    this.rtB.samples = 4;
+    this.rtA.samples = 4;
+
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.scene = new THREE.Scene();
 

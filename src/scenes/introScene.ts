@@ -30,6 +30,7 @@ export class IntroScene extends GenericScene {
     this.camera = new THREE.OrthographicCamera(0, width, height, 0, -1, 1);
 
     this.renderTarget = new THREE.WebGLRenderTarget(width, height, {});
+    this.renderTarget.samples = 4;
 
     // Plane for rendering JimmyScene texture
     const planeGeometry = new THREE.PlaneGeometry(width, height);
