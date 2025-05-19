@@ -16,8 +16,6 @@ import { SceneTransition } from './core/sceneTransitions';
 import { IntroScene } from './scenes/introScene';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.NoToneMapping;
 
 const mainScene = new ShootScene();
 const flashLight = new Flashlight();
@@ -30,6 +28,8 @@ const handsController = new HandsDetector();
 const sceneManager = new SceneTransition();
 
 const { video } = videoController;
+
+const isDebugging = false;
 
 // Globals
 
@@ -57,7 +57,10 @@ const handleDetectFace = (facePosition: THREE.Vector3) => {
 };
 
 function animate() {
-  intro.update();
+  if (!isDebugging) {
+    intro.update();
+  }
+
   mainScene.update(cameraPos);
   sceneManager.render(renderer);
   flashLight.update();
@@ -66,22 +69,19 @@ function animate() {
 }
 const initialize = async () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-  renderer.setClearColor(0x000000);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  sceneManager.setCurrentScene(intro);
+  sceneManager.setCurrentScene(isDebugging ? mainScene : intro);
+
+  if (isDebugging) await handObject.initialize();
+  const helper = new THREE.CameraHelper(flashLight.light.shadow.camera);
 
   mainScene.scene.add(flashLight.light);
+  mainScene.scene.add(helper);
   mainScene.scene.add(handObject.meshGroup);
-
-  intro.onAnimationComplete(() => {
-    sceneManager.fade(renderer, intro, mainScene, async () => {
-      await handObject.initialize();
-    });
-  });
 
   document.body.appendChild(renderer.domElement);
   window.addEventListener('resize', onWindowResize);
@@ -90,13 +90,19 @@ const initialize = async () => {
   await faceController.initialize();
   await handsController.initialize();
 
-  animate();
+  intro.onAnimationComplete(() => {
+    sceneManager.fade(renderer, intro, mainScene, async () => {
+      await handObject.initialize();
+    });
+  });
 
   handsController.detectHands({ video }, handleDetectHands);
   faceController.detectFaces(
     { video, camera: mainScene.camera },
     handleDetectFace
   );
+
+  animate();
 };
 
 const onWindowResize = () => {

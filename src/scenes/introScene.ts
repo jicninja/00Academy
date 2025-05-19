@@ -4,6 +4,7 @@ import { GenericScene } from './genericScene';
 
 export class IntroScene extends GenericScene {
   public camera: THREE.OrthographicCamera;
+  private isDone = false;
   private jimmyScene: JimmyScene;
   private renderTarget: THREE.WebGLRenderTarget;
   private plane: THREE.Mesh;
@@ -143,12 +144,17 @@ export class IntroScene extends GenericScene {
       this.plane.position.set(currentX, height / 2, 0);
     }
 
-    this.renderer.setRenderTarget(this.renderTarget);
-    this.renderer.render(this.jimmyScene.scene, this.jimmyScene.camera);
-    this.renderer.setRenderTarget(null);
+    if (!this.isDone) {
+      this.renderer.setRenderTarget(this.renderTarget);
+      this.renderer.render(this.jimmyScene.scene, this.jimmyScene.camera);
+      this.renderer.setRenderTarget(null);
+    }
   }
 
   public onAnimationComplete(callback: () => void) {
-    this.jimmyScene.onAnimationComplete(callback);
+    this.jimmyScene.onAnimationComplete(() => {
+      this.isDone = true;
+      callback();
+    });
   }
 }

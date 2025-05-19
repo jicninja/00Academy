@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GenericScene } from './genericScene';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 type SkinnedAnimation = {
   clip: THREE.AnimationClip;
@@ -10,7 +10,7 @@ type SkinnedAnimation = {
 export class JimmyScene extends GenericScene {
   private cannonModel?: THREE.Scene;
   private jimmyModel?: THREE.Scene;
-  private isIntroDone = false;
+  public isIntroDone = false;
   public camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock = new THREE.Clock();
@@ -35,19 +35,20 @@ export class JimmyScene extends GenericScene {
     const ambientLight = new THREE.AmbientLight(0xffffff, 3);
     this.scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
     directionalLight.castShadow = true;
     directionalLight.position.set(5, 15, 5);
 
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.radius = 10;
+    directionalLight.shadow.mapSize.set(96, 96);
+    directionalLight.shadow.autoUpdate = true;
+    directionalLight.shadow.radius = 1;
+
     this.scene.add(directionalLight);
 
     this.initScene();
 
     const floorGeometry = new THREE.PlaneGeometry(100, 100);
-    const floorMaterial = new THREE.ShadowMaterial({ opacity: 1 });
+    const floorMaterial = new THREE.ShadowMaterial({ opacity: 0.4 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
     floor.rotation.x = -Math.PI / 2;
@@ -66,7 +67,7 @@ export class JimmyScene extends GenericScene {
 
   private async loadCannonModel(loader: GLTFLoader) {
     loader.load('./assets/cannon.glb', (gltf) => {
-      const model = gltf.scene as THREE.Scene;
+      const model = gltf.scene as unknown as THREE.Scene;
 
       this.cannonModel = model;
       this.cannonModel.lookAt(0, 0, 0);
@@ -118,7 +119,7 @@ export class JimmyScene extends GenericScene {
 
   private loadJimmyModel(loader: GLTFLoader) {
     loader.load('./assets/jimmy.glb', (gltf) => {
-      const model = gltf.scene;
+      const model = gltf.scene as unknown as THREE.Scene;
 
       this.jimmyModel = model;
 
@@ -172,7 +173,7 @@ export class JimmyScene extends GenericScene {
         const interval = 2000;
 
         if (this.jimmyModel) {
-          const animationClock = new THREE.Clock(); // Isolated clock for animation
+          const animationClock = new THREE.Clock();
           const animateMaterial = () => {
             this.jimmyModel!.traverse((child) => {
               if (
@@ -180,7 +181,7 @@ export class JimmyScene extends GenericScene {
                 child.material instanceof THREE.MeshStandardMaterial
               ) {
                 const elapsedTime = animationClock.getElapsedTime();
-                child.material.metalness = Math.abs(elapsedTime * 2); // Increment metalness over time
+                child.material.metalness = Math.abs(elapsedTime * 2);
               }
             });
 

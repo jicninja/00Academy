@@ -85,30 +85,30 @@ export class SceneTransition {
 
     this.material.uniforms.mixRatio.value = 0;
 
-    // Render scenes to render targets
-
     this.material.uniforms.tA.value = this.rtA.texture;
     this.material.uniforms.tB.value = this.rtB.texture;
 
     renderer.setRenderTarget(this.rtA);
-    renderer.clear();
     renderer.render(sceneIntro.scene, sceneIntro.camera);
 
     renderer.setRenderTarget(this.rtB);
-    renderer.clear();
 
     renderer.render(sceneOutro.scene, sceneOutro.camera);
 
     renderer.setRenderTarget(null);
 
     const animate = () => {
+      console.log('sigo renderizando');
+
       this.isAnimation = true;
       const now = performance.now();
       const t = Math.min((now - start) / duration, 1);
       this.material.uniforms.mixRatio.value = t;
 
+      renderer.setRenderTarget(this.rtA);
+      renderer.render(sceneIntro.scene, sceneIntro.camera);
+
       renderer.setRenderTarget(this.rtB);
-      renderer.clear();
 
       renderer.render(sceneOutro.scene, sceneOutro.camera);
 
@@ -123,10 +123,8 @@ export class SceneTransition {
         this.material.uniforms.tB.value = null;
 
         renderer.setRenderTarget(this.rtA);
-        renderer.clear();
 
         renderer.setRenderTarget(this.rtB);
-        renderer.clear();
 
         renderer.setRenderTarget(null);
 

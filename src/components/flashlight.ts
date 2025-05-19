@@ -7,11 +7,12 @@ export class Flashlight {
   private smoother = createVector3Smoother(0.9);
 
   constructor() {
-    this.light = new THREE.SpotLight(0xffffff, 20, 50, Math.PI / 5, 1, 0.5);
+    this.light = new THREE.SpotLight(0xffffff, 20, 50, Math.PI / 5, 0.5, 0.5);
     this.light.position.copy(this.position);
     this.light.target.position.set(0, 0, 0);
     this.light.castShadow = true;
-    this.light.shadow.mapSize.set(1024, 1024);
+    this.light.shadow.mapSize.set(128, 128);
+    this.light.shadow.radius = 1;
   }
 
   setPosition(position: THREE.Vector3) {
@@ -19,6 +20,6 @@ export class Flashlight {
   }
 
   update() {
-    this.light.position.copy(this.position);
+    this.light.position.lerp(this.position, 0.5);
   }
 }
