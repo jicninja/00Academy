@@ -11,6 +11,11 @@ export class IntroScene extends GenericScene {
   private renderer: THREE.WebGLRenderer;
   private startTime: number = 0;
 
+  private bloodPlane: THREE.Mesh;
+  private bloodStartTime: number = 0;
+  private bloodAnimationStarted = false;
+  private bloodAnimationDuration = 1.0; // seconds
+
   private fadingCircles: { mesh: THREE.Mesh; createdAt: number }[] = [];
   private fadingCircleStep = 0;
 
@@ -18,6 +23,7 @@ export class IntroScene extends GenericScene {
   private circleStartTime: number = 0;
   private circleAnimationDuration: number = 1.5; // seconds
   private circleAnimationDone = false;
+  private introStartTime: number;
 
   constructor(renderer: THREE.WebGLRenderer) {
     super();
@@ -28,12 +34,13 @@ export class IntroScene extends GenericScene {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
+    this.introStartTime = performance.now();
+
     this.camera = new THREE.OrthographicCamera(0, width, height, 0, -1, 1);
 
     this.renderTarget = new THREE.WebGLRenderTarget(width, height, {});
     this.renderTarget.samples = 4;
 
-    // Plane for rendering JimmyScene texture
     const planeGeometry = new THREE.PlaneGeometry(width, height);
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: this.renderTarget.texture,
@@ -42,15 +49,35 @@ export class IntroScene extends GenericScene {
     this.plane.position.set(width * 0.5, height / 2, 0);
     this.scene.add(this.plane);
 
-    // Create white circle
     const circleGeometry = new THREE.CircleGeometry(50, 64);
     const circleMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
     });
     this.circle = new THREE.Mesh(circleGeometry, circleMaterial);
-    this.circle.position.set(width + 50, height / 2, 1); // z=1 to appear above plane
+    this.circle.position.set(width + 50, height / 2, 1);
     this.scene.add(this.circle);
+
+    const bloodTexture = new THREE.TextureLoader().load('./assets/blood.png');
+    bloodTexture.colorSpace = THREE.SRGBColorSpace;
+    bloodTexture.premultiplyAlpha = true;
+
+    const bloodMaterial = new THREE.MeshBasicMaterial({
+      map: bloodTexture,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+      blendEquation: THREE.AddEquation,
+      alphaTest: 1,
+    });
+
+    const bloodGeometry = new THREE.PlaneGeometry(width, height);
+    this.bloodPlane = new THREE.Mesh(bloodGeometry, bloodMaterial);
+    this.bloodPlane.position.set(width / 2, height * 2, 1);
+
+    this.scene.add(this.bloodPlane);
   }
 
   private createFadingCircle(x: number, y: number) {
@@ -59,7 +86,6 @@ export class IntroScene extends GenericScene {
       color: 0xffffff,
       transparent: true,
       opacity: 1.0,
-      depthWrite: false,
     });
 
     const fadeCircle = new THREE.Mesh(fadeCircleGeom, fadeCircleMat);
@@ -76,6 +102,29 @@ export class IntroScene extends GenericScene {
     const height = window.innerHeight;
 
     const now = performance.now() / 3000;
+
+    const elapsedSinceIntroStart = performance.now() - this.introStartTime;
+
+    if (!this.bloodAnimationStarted && elapsedSinceIntroStart >= 10000) {
+      this.bloodStartTime = performance.now();
+      this.bloodAnimationStarted = true;
+    }
+
+    if (this.bloodAnimationStarted) {
+      const bloodElapsed = (performance.now() - this.bloodStartTime) / 4000;
+      const bloodProgress = Math.min(
+        bloodElapsed / this.bloodAnimationDuration,
+        1
+      );
+      const startY = height * 2;
+      const endY = -height / 100;
+      const currentY = startY + (endY - startY) * bloodProgress;
+
+      const scaleY = 1 + (2.2 - 1) * bloodProgress;
+
+      this.bloodPlane.position.set(width / 2, currentY, 1);
+      this.bloodPlane.scale.set(1, scaleY, 1);
+    }
 
     if (!this.circleAnimationDone) {
       if (!this.circleStartTime) {

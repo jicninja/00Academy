@@ -77,10 +77,8 @@ const initialize = async () => {
   sceneManager.setCurrentScene(isDebugging ? mainScene : intro);
 
   if (isDebugging) await handObject.initialize();
-  const helper = new THREE.CameraHelper(flashLight.light.shadow.camera);
 
   mainScene.scene.add(flashLight.light);
-  mainScene.scene.add(helper);
   mainScene.scene.add(handObject.meshGroup);
 
   document.body.appendChild(renderer.domElement);

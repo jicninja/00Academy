@@ -98,8 +98,6 @@ export class SceneTransition {
     renderer.setRenderTarget(null);
 
     const animate = () => {
-      console.log('sigo renderizando');
-
       this.isAnimation = true;
       const now = performance.now();
       const t = Math.min((now - start) / duration, 1);
