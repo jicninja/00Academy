@@ -47,4 +47,42 @@ export class GenericScene {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   }
+
+  public dispose() {
+    // Dispose of all geometries, materials, and textures in the scene
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => {
+              this.disposeMaterial(material);
+            });
+          } else {
+            this.disposeMaterial(object.material);
+          }
+        }
+      }
+    });
+
+    // Clear the scene
+    while (this.scene.children.length > 0) {
+      this.scene.remove(this.scene.children[0]);
+    }
+  }
+
+  private disposeMaterial(material: THREE.Material) {
+    // Dispose textures
+    Object.keys(material).forEach((key) => {
+      const value = (material as any)[key];
+      if (value && typeof value === 'object' && 'dispose' in value) {
+        value.dispose();
+      }
+    });
+    
+    // Dispose material
+    material.dispose();
+  }
 }

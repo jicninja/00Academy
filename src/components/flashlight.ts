@@ -22,4 +22,16 @@ export class Flashlight {
   update() {
     this.light.position.lerp(this.position, 0.5);
   }
+
+  dispose() {
+    // Dispose of shadow map
+    if (this.light.shadow && this.light.shadow.map) {
+      this.light.shadow.map.dispose();
+    }
+    
+    // Remove light from parent if it has one
+    if (this.light.parent) {
+      this.light.parent.remove(this.light);
+    }
+  }
 }

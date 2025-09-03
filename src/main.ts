@@ -14,8 +14,7 @@ import {
 
 import { SceneTransition } from './core/sceneTransitions';
 import { IntroScene } from './scenes/introScene';
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+import { renderer } from './core/renderer';
 
 const mainScene = new ShootScene();
 const flashLight = new Flashlight();
@@ -33,7 +32,7 @@ const isDebugging = false;
 
 // Globals
 
-const intro = new IntroScene(renderer);
+const intro = new IntroScene(renderer.getRenderer());
 
 const cameraPos = new THREE.Vector3(0, 0, 5);
 
@@ -62,17 +61,15 @@ function animate() {
   }
 
   mainScene.update(cameraPos);
-  sceneManager.render(renderer);
+  sceneManager.render(renderer.getRenderer());
   flashLight.update();
   handObject.update();
   requestAnimationFrame(animate);
 }
+// Global cleanup manager
+const cleanupFunctions: (() => void)[] = [];
+
 const initialize = async () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   sceneManager.setCurrentScene(isDebugging ? mainScene : intro);
 
@@ -81,15 +78,21 @@ const initialize = async () => {
   mainScene.scene.add(flashLight.light);
   mainScene.scene.add(handObject.meshGroup);
 
-  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(renderer.getDomElement());
   window.addEventListener('resize', onWindowResize);
+  cleanupFunctions.push(() => window.removeEventListener('resize', onWindowResize));
 
-  await videoController.initialize();
-  await faceController.initialize();
-  await handsController.initialize();
+  try {
+    await videoController.initialize();
+    await faceController.initialize();
+    await handsController.initialize();
+  } catch (error) {
+    console.error('Failed to initialize detectors:', error);
+    // Continue running even if detectors fail
+  }
 
   intro.onAnimationComplete(() => {
-    sceneManager.fade(renderer, intro, mainScene, async () => {
+    sceneManager.fade(renderer.getRenderer(), intro, mainScene, async () => {
       await handObject.initialize();
     });
   });
@@ -106,7 +109,46 @@ const initialize = async () => {
 const onWindowResize = () => {
   sceneManager.currentScene?.updateCamera();
   sceneManager.resize();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.resize();
 };
 
-initialize();
+// Cleanup function for when the page unloads
+const cleanup = () => {
+  console.log('Cleaning up resources...');
+  
+  // Dispose detectors
+  videoController.dispose();
+  faceController.dispose();
+  handsController.dispose();
+  
+  // Dispose Three.js objects
+  mainScene.dispose();
+  intro.dispose();
+  flashLight.dispose();
+  handObject.dispose();
+  
+  // Dispose renderer
+  renderer.dispose();
+  
+  // Run all cleanup functions
+  cleanupFunctions.forEach(fn => fn());
+};
+
+// Handle page unload
+window.addEventListener('beforeunload', cleanup);
+window.addEventListener('unload', cleanup);
+
+// Handle visibility change to pause/resume
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Pause detection when page is hidden
+    console.log('Page hidden, pausing detectors');
+  } else {
+    // Resume when visible again
+    console.log('Page visible, resuming detectors');
+  }
+});
+
+initialize().catch(error => {
+  console.error('Failed to initialize application:', error);
+});

@@ -230,4 +230,28 @@ export class HandHelper {
     this.wristAimPos.copy(wristPos);
     this.indexAimPos.copy(indexPos);
   }
+
+  public dispose() {
+    // Remove DOM elements
+    if (this.wristAimDiv.parentNode) {
+      this.wristAimDiv.parentNode.removeChild(this.wristAimDiv);
+    }
+    if (this.indexAimDiv.parentNode) {
+      this.indexAimDiv.parentNode.removeChild(this.indexAimDiv);
+    }
+
+    // Dispose geometry and material
+    this.geometry.dispose();
+    this.material.dispose();
+
+    // Remove all meshes from group
+    while (this.meshGroup.children.length > 0) {
+      this.meshGroup.remove(this.meshGroup.children[0]);
+    }
+
+    // Remove group from parent if it has one
+    if (this.meshGroup.parent) {
+      this.meshGroup.parent.remove(this.meshGroup);
+    }
+  }
 }
