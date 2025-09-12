@@ -140,6 +140,49 @@ export class PhysicsWorld {
     return rigidBody;
   }
   
+  createCylinder(
+    mesh: THREE.Object3D,
+    position: THREE.Vector3,
+    halfHeight: number,
+    radius: number,
+    isStatic: boolean = false,
+    restitution: number = 0.5,
+    isKinematic: boolean = false
+  ): RAPIER.RigidBody | null {
+    if (!this.world) return null;
+    
+    let rigidBodyDesc;
+    if (isStatic) {
+      rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
+    } else if (isKinematic) {
+      rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
+    } else {
+      rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic();
+    }
+    
+    rigidBodyDesc.setTranslation(position.x, position.y, position.z);
+    
+    // Apply rotation from the mesh
+    const quaternion = new THREE.Quaternion();
+    mesh.getWorldQuaternion(quaternion);
+    rigidBodyDesc.setRotation({ x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w });
+    
+    const rigidBody = this.world.createRigidBody(rigidBodyDesc);
+    
+    // Create cylinder collider
+    const colliderDesc = RAPIER.ColliderDesc.cylinder(halfHeight, radius)
+      .setRestitution(restitution)
+      .setFriction(0.5)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    
+    const collider = this.world.createCollider(colliderDesc, rigidBody);
+    
+    this.bodies.set(mesh, rigidBody);
+    this.colliders.set(collider, mesh);
+    
+    return rigidBody;
+  }
+  
   removeBody(mesh: THREE.Object3D): void {
     const body = this.bodies.get(mesh);
     if (body && this.world) {

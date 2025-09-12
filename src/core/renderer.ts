@@ -18,6 +18,7 @@ export class Renderer {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = true; // Actualizar sombras automáticamente
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     
     // Performance optimizations

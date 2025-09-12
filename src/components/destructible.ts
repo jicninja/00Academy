@@ -3,12 +3,12 @@ import * as THREE from 'three';
 export abstract class Destructible {
   protected life: number;
   protected maxLife: number;
-  public mesh: THREE.Mesh;
+  public mesh: THREE.Object3D;
   
   constructor(life: number) {
     this.life = life;
     this.maxLife = life;
-    this.mesh = new THREE.Mesh(); // Will be overridden by subclasses
+    this.mesh = new THREE.Object3D(); // Will be overridden by subclasses
   }
   
   public takeDamage(damage: number): boolean {

@@ -517,6 +517,10 @@ export class HandHelper {
         .addScaledVector(thumbToIndex, thumbInfluence)
         .addScaledVector(cameraAimDirection, cameraInfluence)
         .normalize();
+      
+      // Compensar inclinación hacia abajo añadiendo un pequeño componente hacia arriba
+      shootDirection.y += 0.1; // Ajuste hacia arriba
+      shootDirection.normalize();
         
       return shootDirection;
     }
