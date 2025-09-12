@@ -233,10 +233,17 @@ export class HandHelper {
     this.indexAimDiv.style.left = `${indexSmoothed.x}px`;
     this.indexAimDiv.style.top = `${indexSmoothed.y}px`;
 
-    // Update hand model with smoothing
+    // Move entire meshGroup to wrist screen position (same as wristScreenSphere)
+    const smoothedScreenPos = this.wristScreenSphereSmoother(this.wristScreenPosition);
+    this.meshGroup.position.copy(smoothedScreenPos);
+    
+    // Scale meshGroup to be 3 times smaller
+    this.meshGroup.scale.set(1/3, 1/3, 1/3);
+
+    // Update hand model with smoothing (position relative to meshGroup)
     if (this.handModel) {
-      const smoothedPosition = this.handModelPositionSmoother(this.targetHandPosition);
-      this.handModel.position.copy(smoothedPosition);
+      // Hand model position is now relative to the meshGroup (which is at wrist screen position)
+      this.handModel.position.set(0, 0, 0); // At the meshGroup center (wrist position)
       
       // Use handModelRotationSmoother for smooth rotation
       const targetRotationVector = new THREE.Vector3(
@@ -254,15 +261,14 @@ export class HandHelper {
       );
     }
 
-    // Update bone points with smoothing
+    // Update bone points with smoothing (positions are already relative to wrist from update3DAim)
     this.points.forEach((point) => {
       const smoothedPos = point.smoother(point.position);
       point.mesh.position.copy(smoothedPos);
     });
 
-    // Update screen space wrist sphere with smoothing
-    const smoothedScreenPos = this.wristScreenSphereSmoother(this.wristScreenPosition);
-    this.wristScreenSphere.position.copy(smoothedScreenPos);
+    // Reset wristScreenSphere position since meshGroup now handles the main positioning
+    this.wristScreenSphere.position.set(0, 0, 0);
   }
 
   public async initialize() {
@@ -337,24 +343,28 @@ export class HandHelper {
     const wristKeypoint = hand.keypoints3D[0];
     const scale = 10;
 
+    // Calculate wrist position in world space (this will be the meshGroup position)
+    const wristWorldPos = new THREE.Vector3(
+      -wristKeypoint.x * scale + this.wristAimPos.x * 0.001,
+      -wristKeypoint.y * scale - this.wristAimPos.y * 0.001,
+      (wristKeypoint.z ?? 0) * scale + this.wristAimPos.z * 0.001
+    );
+
     hand.keypoints3D.forEach((keypoint, index: number) => {
-      const pos = new THREE.Vector3(
+      const worldPos = new THREE.Vector3(
         -keypoint.x * scale + this.wristAimPos.x * 0.001,
         -keypoint.y * scale - this.wristAimPos.y * 0.001,
         (keypoint.z ?? 0) * scale + this.wristAimPos.z * 0.001
       );
 
-      this.points[index].position.copy(pos);
+      // Store position relative to wrist (will be applied relative to meshGroup in update())
+      this.points[index].position.copy(worldPos.sub(wristWorldPos));
     });
     
     // Update target position and rotation for hand model
     if (this.handModelLoaded && wristKeypoint) {
-      // Set target position at wrist
-      this.targetHandPosition.set(
-        -wristKeypoint.x * scale + this.wristAimPos.x * 0.001,
-        -wristKeypoint.y * scale - this.wristAimPos.y * 0.001,
-        (wristKeypoint.z ?? 0) * scale + this.wristAimPos.z * 0.001
-      );
+      // Set target position at wrist world position
+      this.targetHandPosition.copy(wristWorldPos);
       
       // Calculate target rotation based on hand orientation
       if (hand.keypoints3D && hand.keypoints3D.length > 9) {
@@ -442,6 +452,98 @@ export class HandHelper {
     this.handModelRotationSmoother = createVector3Smoother(rotation);
   }
   
+  public getIndexFingerWorldPosition(): THREE.Vector3 {
+    // Index finger tip is at index 8 in defaultHand array
+    const indexFingerTip = this.points[8];
+    if (indexFingerTip) {
+      // Get world position by combining meshGroup position with relative position
+      const worldPosition = new THREE.Vector3();
+      indexFingerTip.mesh.getWorldPosition(worldPosition);
+      return worldPosition;
+    }
+    // Fallback to meshGroup position if index finger not available
+    return this.meshGroup.position.clone();
+  }
+
+  public getHandAimDirection(): THREE.Vector3 {
+    // Points from defaultHand array:
+    // 0: wrist
+    // 4: thumb_tip  
+    // 8: index_finger_tip
+    
+    const wrist = this.points[0];   // Wrist
+    const thumb = this.points[4];   // Thumb tip
+    const index = this.points[8];   // Index finger tip
+    
+    if (wrist && thumb && index && this.currentCamera) {
+      // Get world positions
+      const wristWorldPos = new THREE.Vector3();
+      const thumbWorldPos = new THREE.Vector3();
+      const indexWorldPos = new THREE.Vector3();
+      
+      wrist.mesh.getWorldPosition(wristWorldPos);
+      thumb.mesh.getWorldPosition(thumbWorldPos);
+      index.mesh.getWorldPosition(indexWorldPos);
+      
+      // Primary direction: from wrist through index finger
+      const wristToIndex = indexWorldPos.clone().sub(wristWorldPos).normalize();
+      
+      // Secondary direction: from thumb to index (for lateral aim)
+      const thumbToIndex = indexWorldPos.clone().sub(thumbWorldPos).normalize();
+      
+      // Camera aim direction: from spawn point toward indexAimPos screen position
+      const cameraAimDirection = this.getCameraAimDirection();
+      
+      // Check if aiming to the right (indexAimPos.x > center of screen)
+      const isAimingRight = this.indexAimPos.x > window.innerWidth / 2;
+      
+      let wristInfluence, thumbInfluence, cameraInfluence;
+      
+      if (isAimingRight) {
+        // Aiming right: more thumb influence for better lateral control
+        wristInfluence = 0.25;  // 25% wrist to index
+        thumbInfluence = 0.35;  // 35% thumb to index (más para derecha)
+        cameraInfluence = 0.4;  // 40% camera aim
+      } else {
+        // Aiming left: original balanced proportions
+        wristInfluence = 0.35;  // 35% wrist to index
+        thumbInfluence = 0.15;  // 15% thumb to index
+        cameraInfluence = 0.5;  // 50% camera aim
+      }
+      
+      // Combine all directions with dynamic influences
+      const shootDirection = new THREE.Vector3()
+        .addScaledVector(wristToIndex, wristInfluence)
+        .addScaledVector(thumbToIndex, thumbInfluence)
+        .addScaledVector(cameraAimDirection, cameraInfluence)
+        .normalize();
+        
+      return shootDirection;
+    }
+    
+    // Fallback direction (forward)
+    return new THREE.Vector3(0, 0, -1);
+  }
+
+  private getCameraAimDirection(): THREE.Vector3 {
+    if (!this.currentCamera) return new THREE.Vector3(0, 0, -1);
+    
+    // Convert indexAimPos screen coordinates to world direction
+    const ndcX = (this.indexAimPos.x / window.innerWidth) * 2 - 1;
+    const ndcY = -(this.indexAimPos.y / window.innerHeight) * 2 + 1;
+    
+    const ndcVector = new THREE.Vector3(ndcX, ndcY, 0.5);
+    ndcVector.unproject(this.currentCamera);
+    
+    const cameraPosition = new THREE.Vector3();
+    this.currentCamera.getWorldPosition(cameraPosition);
+    
+    // Direction from camera through indexAimPos screen point
+    const aimTargetDirection = ndcVector.sub(cameraPosition).normalize();
+    
+    return aimTargetDirection;
+  }
+
   public getHandDebugInfo(): string {
     // Debug function to get hand information
     return `Hand bones: ${this.points.length} points, Model loaded: ${this.handModelLoaded}, Position smoothing: 0.15, Rotation smoothing: 0.08 (using handModelRotationSmoother)`;

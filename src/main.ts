@@ -144,62 +144,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if (event.code === 'Space' && currentWristPos && currentIndexPos && currentHand) {
     event.preventDefault();
     
-    // Get key hand points
-    const wrist = currentHand.keypoints[0];
-    const thumb = currentHand.keypoints[4]; // Thumb tip
-    const index = currentHand.keypoints[8]; // Index finger tip
-    const middle = currentHand.keypoints[12]; // Middle finger tip
+    // Key hand points (for future use if needed)
     
-    // Calculate hand gesture direction using multiple points
-    // Primary direction: from wrist through index finger
-    const wristToIndex = new THREE.Vector3(
-      -(index.x - wrist.x), // Invert X for right hand
-      -(index.y - wrist.y), // Invert Y
-      (index.z || 0) - (wrist.z || 0)
-    ).normalize();
+    // Get spawn position from index finger tip of the meshGroup
+    const spawnPosition = handObject.getIndexFingerWorldPosition();
     
-    // Secondary direction: from thumb to index (for lateral aim)
-    const thumbToIndex = new THREE.Vector3(
-      -(index.x - thumb.x), // Invert X for right hand
-      -(index.y - thumb.y),
-      (index.z || 0) - (thumb.z || 0)
-    ).normalize();
-    
-    // Combine directions for more natural aiming
-    const handDirection = new THREE.Vector3()
-      .addScaledVector(wristToIndex, 0.7) // Primary influence
-      .addScaledVector(thumbToIndex, 0.3) // Secondary influence
-      .normalize();
-    
-    // Apply 100px upward offset to match the wristAimDiv and wristScreenSphere
-    const wristYOffset = 100;
-    const adjustedWristY = currentWristPos.y - wristYOffset;
-    
-    // Convert adjusted wrist screen position to world position for spawn point
-    const ndcX = (currentWristPos.x / window.innerWidth) * 2 - 1;
-    const ndcY = -(adjustedWristY / window.innerHeight) * 2 + 1;
-    
-    const ndcVector = new THREE.Vector3(ndcX, ndcY, 0.5);
-    ndcVector.unproject(mainScene.camera);
-    
-    const cameraPosition = new THREE.Vector3();
-    mainScene.camera.getWorldPosition(cameraPosition);
-    
-    // Calculate spawn position
-    const rayDirection = ndcVector.sub(cameraPosition).normalize();
-    const spawnPosition = cameraPosition.clone();
-    spawnPosition.addScaledVector(rayDirection, 1.5); // Spawn 1.5 units from camera
-    
-    // Calculate shooting direction
-    // Base direction goes into the screen
-    const shootDirection = rayDirection.clone();
-    
-    // Add hand gesture influence for more intuitive aiming
-    const gestureInfluence = 0.5; // Increased influence
-    shootDirection.x += handDirection.x * gestureInfluence;
-    shootDirection.y += handDirection.y * gestureInfluence;
-    shootDirection.z -= 0.2; // Slight forward bias
-    shootDirection.normalize();
+    // Get shooting direction from index and thumb positions in meshGroup
+    const shootDirection = handObject.getHandAimDirection();
     
     
     bulletManager.spawnBullet(spawnPosition, shootDirection, 30);
