@@ -1,20 +1,26 @@
 import * as THREE from 'three';
 import { physicsWorld } from '../physics/physics';
+import { Destructible } from './destructible';
 
 // Target dimensions constant
 const TARGET_SIZE = new THREE.Vector3(0.5, 0.5, 0.5);
+const TARGET_LIFE = 30;
+const BULLET_DAMAGE = 10;
 
-export class Target {
-  public mesh: THREE.Mesh;
+export class Target extends Destructible {
   private originalColor: number;
-  private hitCount: number = 0;
   private physicsBody: any = null;
 
   constructor(position: THREE.Vector3, color: number = 0x00ff00) {
+    super(TARGET_LIFE);
+    
     const geometry = new THREE.BoxGeometry(TARGET_SIZE.x * 2, TARGET_SIZE.y * 2, TARGET_SIZE.z * 2);
     const material = new THREE.MeshStandardMaterial({ color });
     this.mesh = new THREE.Mesh(geometry, material);
     this.originalColor = color;
+
+    this.maxLife = 50;
+    this.life = 50;
 
     this.mesh.position.copy(position);
     this.mesh.castShadow = this.mesh.receiveShadow = true;
@@ -50,38 +56,77 @@ export class Target {
   }
   
   private onHit(other: THREE.Object3D): void {
-    // Check if hit by bullet (assuming bullets have a specific property or name)
+    // Check if hit by bullet
     if (other.name === 'bullet' || other.userData.isBullet) {
-      this.hitCount++;
+      const isDestroyed = this.takeDamage(BULLET_DAMAGE);
       
-      // Flash effect
-      const material = this.mesh.material as THREE.MeshStandardMaterial;
-      material.emissive = new THREE.Color(0xffffff);
-      material.emissiveIntensity = 0.5;
-      
-      // Scale effect
-      this.mesh.scale.multiplyScalar(1.1);
-      
-      // Reset after a short delay
-      setTimeout(() => {
-        material.emissive = new THREE.Color(0x000000);
-        material.emissiveIntensity = 0;
-        this.mesh.scale.set(1, 1, 1);
-        
-        // Change color after multiple hits
-        if (this.hitCount >= 3) {
-          material.color.setHex(0xff0000); // Red after 3 hits
-        } else if (this.hitCount >= 2) {
-          material.color.setHex(0xffff00); // Yellow after 2 hits
+      if (isDestroyed) {
+        // Target is destroyed, remove from scene
+        if (this.mesh.parent) {
+          this.mesh.parent.remove(this.mesh);
         }
-      }, 100);
+      } else {
+        // Flash effect for living targets
+        const material = this.mesh.material as THREE.MeshStandardMaterial;
+        material.emissive = new THREE.Color(0xffffff);
+        material.emissiveIntensity = 0.5;
+        
+        // Scale effect
+        this.mesh.scale.multiplyScalar(1.1);
+        
+        // Reset after a short delay
+        setTimeout(() => {
+          material.emissive = new THREE.Color(0x000000);
+          material.emissiveIntensity = 0;
+          this.mesh.scale.set(1, 1, 1);
+        }, 100);
+      }
     }
   }
   
+  protected updateAppearance(): void {
+    const material = this.mesh.material as THREE.MeshStandardMaterial;
+    const lifePercentage = this.getLifePercentage();
+    
+    // Change color based on life percentage
+    if (lifePercentage > 0.66) {
+      // Green (healthy)
+      material.color.setHex(0x00ff00);
+    } else if (lifePercentage > 0.33) {
+      // Yellow (damaged)
+      material.color.setHex(0xffff00);
+    } else {
+      // Red (critical)
+      material.color.setHex(0xff0000);
+    }
+  }
+  
+  protected onDestroy(): void {
+    // Remove physics body
+    if (this.physicsBody) {
+      physicsWorld.removeBody(this.mesh);
+    }
+    
+    // Remove collision handler
+    this.mesh.userData.onCollision = null;
+    
+    // Trigger destruction event for scene cleanup
+    this.mesh.userData.isDestroyed = true;
+    
+    // Optional: Add destruction visual effects
+    const material = this.mesh.material as THREE.MeshStandardMaterial;
+    material.color.setHex(0x000000);
+    material.opacity = 0.5;
+    material.transparent = true;
+  }
+  
   public reset(): void {
-    this.hitCount = 0;
+    this.life = this.maxLife;
     const material = this.mesh.material as THREE.MeshStandardMaterial;
     material.color.setHex(this.originalColor);
+    material.opacity = 1;
+    material.transparent = false;
+    this.mesh.userData.isDestroyed = false;
   }
 }
 
