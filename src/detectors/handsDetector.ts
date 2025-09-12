@@ -50,7 +50,7 @@ export class HandsDetector {
       const hands = await this.detector.estimateHands(video);
 
       const hand =
-        hands.find((itemHand) => itemHand.handedness === 'Left') || hands[0];
+        hands.find((itemHand) => itemHand.handedness === 'Right') || hands[0];
 
       if (!hand) {
         this.animationFrameId = requestAnimationFrame(() => {
