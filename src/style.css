@@ -14,10 +14,91 @@ body {
   pointer-events: none;
   z-index: 10;
   transform: translate(-50%, -50%);
+  display: none;
 }
 
 .wrist {
+  display: block;
   width: 90px;
   height: 90px;
   border: 5px solid blue;
+}
+
+.scene-selector {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.scene-btn {
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+  border: 1px solid rgba(0, 255, 0, 0.5);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.scene-btn:hover {
+  background: rgba(0, 255, 0, 0.2);
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.scene-btn.active {
+  background: rgba(0, 255, 0, 0.3);
+  border-color: #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.scene-btn:active {
+  transform: scale(0.95);
+}
+
+.blur-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, 
+    transparent 0%, 
+    transparent 25%, 
+    rgba(0, 0, 0, 0.05) 50%, 
+    rgba(0, 0, 0, 0.1) 80%, 
+    rgba(0, 0, 0, 0.2) 100%);
+  backdrop-filter: blur(3px);
+  mask: radial-gradient(circle at center, 
+    transparent 0%, 
+    transparent 20%, 
+    rgba(0, 0, 0, 0.2) 40%, 
+    rgba(0, 0, 0, 0.6) 70%, 
+    black 90%);
+  -webkit-mask: radial-gradient(circle at center, 
+    transparent 0%, 
+    transparent 20%, 
+    rgba(0, 0, 0, 0.2) 40%, 
+    rgba(0, 0, 0, 0.6) 70%, 
+    black 90%);
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.blur-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }

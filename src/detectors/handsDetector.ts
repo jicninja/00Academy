@@ -147,22 +147,26 @@ export class HandsDetector {
         const wrist = rightHand.keypoints[0];
         const indexFinger = rightHand.keypoints[8];
 
+        // Transform Z from MediaPipe space to camera space (in front of camera)
+        const cameraSpaceWristZ = -1 - (wrist.z || 0) * 2; // Start at -1, extend to -3 (in front of camera)
+        const cameraSpaceIndexZ = -1 - (indexFinger.z || 0) * 2;
+
         const rawScreenWrist = new THREE.Vector3(
           window.innerWidth * (1 - wrist.x / video.videoWidth),
           window.innerHeight * (wrist.y / video.videoHeight),
-          0
+          cameraSpaceWristZ
         );
 
         const rawScreenIndex = new THREE.Vector3(
           window.innerWidth * (1 - indexFinger.x / video.videoWidth),
           window.innerHeight * (indexFinger.y / video.videoHeight),
-          0
+          cameraSpaceIndexZ
         );
 
         const rawNormalizedIndex = new THREE.Vector3(
           indexFinger.x / video.videoWidth,
           indexFinger.y / video.videoHeight,
-          0
+          cameraSpaceIndexZ
         );
 
         result.rightHand = {
@@ -177,22 +181,26 @@ export class HandsDetector {
         const wrist = leftHand.keypoints[0];
         const indexFinger = leftHand.keypoints[8];
 
+        // Transform Z from MediaPipe space to camera space (in front of camera)
+        const cameraSpaceWristZ = -1 - (wrist.z || 0) * 2; // Start at -1, extend to -3 (in front of camera)
+        const cameraSpaceIndexZ = -1 - (indexFinger.z || 0) * 2;
+
         const rawScreenWrist = new THREE.Vector3(
           window.innerWidth * (1 - wrist.x / video.videoWidth),
           window.innerHeight * (wrist.y / video.videoHeight),
-          0
+          cameraSpaceWristZ
         );
 
         const rawScreenIndex = new THREE.Vector3(
           window.innerWidth * (1 - indexFinger.x / video.videoWidth),
           window.innerHeight * (indexFinger.y / video.videoHeight),
-          0
+          cameraSpaceIndexZ
         );
 
         const rawNormalizedIndex = new THREE.Vector3(
           indexFinger.x / video.videoWidth,
           indexFinger.y / video.videoHeight,
-          0
+          cameraSpaceIndexZ
         );
 
         result.leftHand = {

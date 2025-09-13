@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import type { IntroScene } from '../scenes/introScene';
 import type { ShootScene } from '../scenes/shootScene';
+import type { DrivingScene } from '../scenes/drivingScene';
 
-type SceneTypes = IntroScene | ShootScene;
+type SceneTypes = IntroScene | ShootScene | DrivingScene;
 
 export class SceneTransition {
   private rtA: THREE.WebGLRenderTarget;

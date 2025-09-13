@@ -28,7 +28,7 @@ export class DrivingScene extends GenericScene {
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.1,
+      0.1, // Near plane - hands should be visible from Z=-1
       1000
     );
     
@@ -42,18 +42,24 @@ export class DrivingScene extends GenericScene {
     this.createHandIndicators();
     this.initializeHands();
     this.scene.fog = new THREE.Fog(0x000000, 10, 100);
-    
-    this.leftHandObject = new HandHelper();
-    this.rightHandObject = new HandHelper();
   }
   
   private setupLights(): void {
-    this.scene.add(new THREE.AmbientLight(0x00ff00, 0.2));
+    this.scene.add(new THREE.AmbientLight(0x00ff00, 0.3));
+    
+    // Add white light for better hand visibility
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     
     const headLight = new THREE.SpotLight(0x00ff00, 30, 100, Math.PI / 6, 0.3, 1);
     headLight.position.set(0, 1, 0);
     headLight.target.position.set(0, 0, -20);
     this.camera.add(headLight);
+    
+    // Add directional light for hands
+    const handLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    handLight.position.set(0, 2, 1);
+    this.scene.add(handLight);
+    
     this.scene.add(this.camera);
   }
   
@@ -192,6 +198,10 @@ export class DrivingScene extends GenericScene {
       if (handsData.leftHand.hand) {
         this.leftHandObject.update3DAim(handsData.leftHand.hand);
       }
+      
+      // Debug: Force position the left hand to be visible
+      this.leftHandObject.meshGroup.position.set(-1, 1, -2);
+      this.leftHandObject.meshGroup.scale.set(0.5, 0.5, 0.5);
     }
     
     if (handsData.rightHand) {
@@ -204,6 +214,10 @@ export class DrivingScene extends GenericScene {
       if (handsData.rightHand.hand) {
         this.rightHandObject.update3DAim(handsData.rightHand.hand);
       }
+      
+      // Debug: Force position the right hand to be visible
+      this.rightHandObject.meshGroup.position.set(1, 1, -2);
+      this.rightHandObject.meshGroup.scale.set(0.5, 0.5, 0.5);
     }
     
     if (handsData.rightHand && handsData.leftHand) {
@@ -213,13 +227,29 @@ export class DrivingScene extends GenericScene {
       const steeringAmount = (rightWrist.x - leftWrist.x) / window.innerWidth;
       this.setSteeringInput(steeringAmount);
       
+      // Use Z distance for speed control (Z is now in camera space: -1 to -3)
+      const avgZDistance = (rightWrist.z + leftWrist.z) / 2;
+      const normalizedZ = (Math.abs(avgZDistance) - 1) / 2; // Normalize -1 to -3 range to 0-1
+      const zSpeedModifier = Math.max(0.3, Math.min(1.5, 1 + normalizedZ));
+      this.setSpeed(this.speed * zSpeedModifier);
+      
     } else if (handsData.rightHand) {
       const steering = (handsData.rightHand.wristPos.x - window.innerWidth/2) / window.innerWidth;
       this.setSteeringInput(steering * 0.5);
       
+      // Single hand Z control (Z is now in camera space: -1 to -3)
+      const normalizedZ = (Math.abs(handsData.rightHand.wristPos.z) - 1) / 2;
+      const zSpeedModifier = Math.max(0.5, Math.min(1.2, 1 + normalizedZ * 0.5));
+      this.setSpeed(this.speed * zSpeedModifier);
+      
     } else if (handsData.leftHand) {
       const steering = (handsData.leftHand.wristPos.x - window.innerWidth/2) / window.innerWidth;
       this.setSteeringInput(steering * 0.5);
+      
+      // Single hand Z control (Z is now in camera space: -1 to -3)
+      const normalizedZ = (Math.abs(handsData.leftHand.wristPos.z) - 1) / 2;
+      const zSpeedModifier = Math.max(0.5, Math.min(1.2, 1 + normalizedZ * 0.5));
+      this.setSpeed(this.speed * zSpeedModifier);
     }
   }
   
@@ -248,8 +278,15 @@ export class DrivingScene extends GenericScene {
       const smoothedLeftPos = this.leftHandSmoother(leftHandPos);
       const wristYOffset = 100;
       
+      // Use Z distance for depth-based scaling (Z is now in camera space: -1 to -3)
+      const normalizedZ = (Math.abs(leftHandPos.z) - 1) / 2;
+      const zScale = Math.max(0.6, Math.min(1.4, 1 + normalizedZ * 0.8));
+      const indicatorSize = 90 * zScale;
+      
       this.leftHandIndicator.style.left = `${smoothedLeftPos.x}px`;
       this.leftHandIndicator.style.top = `${smoothedLeftPos.y - wristYOffset}px`;
+      this.leftHandIndicator.style.width = `${indicatorSize}px`;
+      this.leftHandIndicator.style.height = `${indicatorSize}px`;
     } else {
       this.leftHandIndicator.classList.remove('active');
     }
@@ -260,8 +297,15 @@ export class DrivingScene extends GenericScene {
       const smoothedRightPos = this.rightHandSmoother(rightHandPos);
       const wristYOffset = 100;
       
+      // Use Z distance for depth-based scaling (Z is now in camera space: -1 to -3)
+      const normalizedZ = (Math.abs(rightHandPos.z) - 1) / 2;
+      const zScale = Math.max(0.6, Math.min(1.4, 1 + normalizedZ * 0.8));
+      const indicatorSize = 90 * zScale;
+      
       this.rightHandIndicator.style.left = `${smoothedRightPos.x}px`;
       this.rightHandIndicator.style.top = `${smoothedRightPos.y - wristYOffset}px`;
+      this.rightHandIndicator.style.width = `${indicatorSize}px`;
+      this.rightHandIndicator.style.height = `${indicatorSize}px`;
     } else {
       this.rightHandIndicator.classList.remove('active');
     }
