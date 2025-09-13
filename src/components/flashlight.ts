@@ -11,13 +11,12 @@ export class Flashlight {
     this.light.position.copy(this.position);
     this.light.target.position.set(0, 0, 0);
     this.light.castShadow = true;
-    this.light.shadow.mapSize.set(2048, 2048); // Aumentar resolución de sombras
-    this.light.shadow.radius = 4; // Suavizar bordes de sombras
+    this.light.shadow.mapSize.set(2048, 2048);
+    this.light.shadow.radius = 4;
     
-    // Configurar cámara de sombras para mejor calidad
     this.light.shadow.camera.near = 0.1;
     this.light.shadow.camera.far = 50;
-    this.light.shadow.bias = -0.0005; // Reducir acné de sombras
+    this.light.shadow.bias = -0.0005;
   }
 
   setPosition(position: THREE.Vector3) {
@@ -29,12 +28,10 @@ export class Flashlight {
   }
 
   dispose() {
-    // Dispose of shadow map
     if (this.light.shadow && this.light.shadow.map) {
       this.light.shadow.map.dispose();
     }
     
-    // Remove light from parent if it has one
     if (this.light.parent) {
       this.light.parent.remove(this.light);
     }

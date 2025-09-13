@@ -13,8 +13,22 @@ export type HandCallbackOptions = {
   hand: handPoseDetection.Hand;
 };
 
+export type BothHandsCallbackOptions = {
+  rightHand?: HandCallbackOptions;
+  leftHand?: HandCallbackOptions;
+};
+
 export class HandsDetector {
   private detector: handPoseDetection.HandDetector | null = null;
+  // Right hand smoothers
+  private smoothRightIndexPos = createVector3Smoother();
+  private smoothRightIndexNormPos = createVector3Smoother();
+  private smoothRightWristPos = createVector3Smoother();
+  // Left hand smoothers
+  private smoothLeftIndexPos = createVector3Smoother();
+  private smoothLeftIndexNormPos = createVector3Smoother();
+  private smoothLeftWristPos = createVector3Smoother();
+  // Legacy single hand smoothers (for backward compatibility)
   private smoothIndexPos = createVector3Smoother();
   private smoothIndexNormPos = createVector3Smoother();
   private smoothWristPos = createVector3Smoother();
@@ -29,6 +43,7 @@ export class HandsDetector {
           runtime: 'mediapipe',
           solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
           modelType: 'lite',
+          maxHands: 2,
         }
       );
     } catch (error) {
@@ -42,7 +57,7 @@ export class HandsDetector {
     { video }: DetectHandsOptions,
     callback: (data: HandCallbackOptions) => void
   ) {
-    if (!this.detector || this.isDetecting) return;
+    if (!this.detector) return;
 
     this.isDetecting = true;
 
@@ -101,10 +116,105 @@ export class HandsDetector {
       console.error('Hand detection error:', error);
       this.isDetecting = false;
       
-      // Retry after a delay
       setTimeout(() => {
         this.detectHands({ video }, callback);
-      }, 1000);
+      }, 100);
+    }
+  }
+
+  public async detectBothHands(
+    { video }: DetectHandsOptions,
+    callback: (data: BothHandsCallbackOptions) => void
+  ) {
+    if (!this.detector) {
+      return;
+    }
+    
+    if (this.isDetecting) {
+      return;
+    }
+    
+    this.isDetecting = true;
+
+    try {
+      const hands = await this.detector.estimateHands(video);
+
+      const rightHand = hands.find((hand) => hand.handedness === 'Right');
+      const leftHand = hands.find((hand) => hand.handedness === 'Left');
+
+      const result: BothHandsCallbackOptions = {};
+      if (rightHand) {
+        const wrist = rightHand.keypoints[0];
+        const indexFinger = rightHand.keypoints[8];
+
+        const rawScreenWrist = new THREE.Vector3(
+          window.innerWidth * (1 - wrist.x / video.videoWidth),
+          window.innerHeight * (wrist.y / video.videoHeight),
+          0
+        );
+
+        const rawScreenIndex = new THREE.Vector3(
+          window.innerWidth * (1 - indexFinger.x / video.videoWidth),
+          window.innerHeight * (indexFinger.y / video.videoHeight),
+          0
+        );
+
+        const rawNormalizedIndex = new THREE.Vector3(
+          indexFinger.x / video.videoWidth,
+          indexFinger.y / video.videoHeight,
+          0
+        );
+
+        result.rightHand = {
+          indexPos: this.smoothRightIndexPos(rawScreenIndex),
+          wristPos: this.smoothRightWristPos(rawScreenWrist),
+          normalizedIndexPos: this.smoothRightIndexNormPos(rawNormalizedIndex),
+          hand: rightHand,
+        };
+      }
+
+      if (leftHand) {
+        const wrist = leftHand.keypoints[0];
+        const indexFinger = leftHand.keypoints[8];
+
+        const rawScreenWrist = new THREE.Vector3(
+          window.innerWidth * (1 - wrist.x / video.videoWidth),
+          window.innerHeight * (wrist.y / video.videoHeight),
+          0
+        );
+
+        const rawScreenIndex = new THREE.Vector3(
+          window.innerWidth * (1 - indexFinger.x / video.videoWidth),
+          window.innerHeight * (indexFinger.y / video.videoHeight),
+          0
+        );
+
+        const rawNormalizedIndex = new THREE.Vector3(
+          indexFinger.x / video.videoWidth,
+          indexFinger.y / video.videoHeight,
+          0
+        );
+
+        result.leftHand = {
+          indexPos: this.smoothLeftIndexPos(rawScreenIndex),
+          wristPos: this.smoothLeftWristPos(rawScreenWrist),
+          normalizedIndexPos: this.smoothLeftIndexNormPos(rawNormalizedIndex),
+          hand: leftHand,
+        };
+      }
+
+      callback(result);
+      this.animationFrameId = requestAnimationFrame(() => {
+        this.isDetecting = false;
+        this.detectBothHands({ video }, callback);
+      });
+    } catch (error) {
+      console.error('Both hands detection error:', error);
+      this.isDetecting = false;
+      
+      setTimeout(() => {
+        this.detectBothHands({ video }, callback);
+      }, 100);
     }
   }
 
@@ -130,13 +240,16 @@ export class HandsDetector {
     setTimeout(() => errorDiv.remove(), 8000);
   }
 
-  public dispose(): void {
+  public stopDetection(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
-    
     this.isDetecting = false;
+  }
+
+  public dispose(): void {
+    this.stopDetection();
     
     if (this.detector) {
       this.detector = null;

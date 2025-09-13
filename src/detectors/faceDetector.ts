@@ -66,7 +66,6 @@ export class FaceDetector {
       console.error('Face detection error:', error);
       this.isDetecting = false;
       
-      // Retry after a delay
       setTimeout(() => {
         this.detectFaces({ video, camera }, callback);
       }, 1000);

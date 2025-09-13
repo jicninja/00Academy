@@ -324,13 +324,10 @@ export class HandHelper {
         }
       });
       
-      //this.meshGroup.add(this.handModel);
       this.handModelLoaded = true;
-      console.log('Hand model loaded successfully');
       
     } catch (error) {
       console.error('Failed to load hand model:', error);
-      // Continue without the model - just show points
       this.showPoints = true;
     }
   }
