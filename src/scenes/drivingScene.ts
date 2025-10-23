@@ -4,6 +4,7 @@ import { createVector3Smoother } from '../utils/smoother';
 import { Wall } from '../components/walls';
 import { type BothHandsCallbackOptions } from '../detectors/handsDetector';
 import { HandHelper } from '../components/hand';
+import { Car } from '../components/car';
 
 export class DrivingScene extends GenericScene {
   public camera: THREE.PerspectiveCamera;
@@ -15,6 +16,9 @@ export class DrivingScene extends GenericScene {
   
   public leftHandObject: HandHelper;
   public rightHandObject: HandHelper;
+  
+  // Car component
+  public car: Car;
   
   private headPositionSmoother = createVector3Smoother(0.85);
   
@@ -41,6 +45,7 @@ export class DrivingScene extends GenericScene {
     this.createTronEnvironment();
     this.createHandIndicators();
     this.initializeHands();
+    this.initializeCar();
     this.scene.fog = new THREE.Fog(0x000000, 10, 100);
   }
   
@@ -146,29 +151,47 @@ export class DrivingScene extends GenericScene {
     this.rightHandObject = new HandHelper();
     this.scene.add(this.rightHandObject.meshGroup);
   }
+
+  private initializeCar(): void {
+    this.car = new Car();
+    this.scene.add(this.car.mesh);
+  }
   
   public update(cameraPos: THREE.Vector3): void {
-    this.time += 0.016;
-        
+    const deltaTime = 0.016;
+    this.time += deltaTime;
+    
+    // Update car
+    this.car.update(deltaTime);
+    this.car.setSteeringInput(this.steeringInput);
+    
+    // Get car position for camera following
+    const carPos = this.car.getPosition();
+    const carRotation = this.car.getRotation();
+    
+    // Camera follows car with offset
+    const cameraOffset = new THREE.Vector3(0, 2, 5); // Behind and above the car
+    const rotatedOffset = cameraOffset.clone();
+    rotatedOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), carRotation);
+    
+    const targetCameraPos = carPos.clone().add(rotatedOffset);
+    
+    // Add head tracking influence
     const smoothedHeadPos = this.headPositionSmoother(cameraPos);
+    const headInfluence = 0.3;
+    targetCameraPos.x += smoothedHeadPos.x * headInfluence;
+    targetCameraPos.y += smoothedHeadPos.y * 0.2;
     
-    const headInfluence = 0.6;
-    const verticalInfluence = 0.4;
+    // Smooth camera movement
+    this.camera.position.lerp(targetCameraPos, 0.1);
     
-    const steeringX = smoothedHeadPos.x * headInfluence;
-    const steeringY = smoothedHeadPos.y * verticalInfluence;
-    const steeringZ = smoothedHeadPos.z * 0.2;
+    // Camera looks at car with slight forward offset
+    const lookAtTarget = carPos.clone();
+    lookAtTarget.y += 1;
+    lookAtTarget.z -= 2; // Look slightly ahead of the car
+    this.camera.lookAt(lookAtTarget);
     
-    const targetCameraPos = new THREE.Vector3(
-      steeringX + Math.sin(this.time * 2) * 0.02,
-      Math.max(0.8, Math.min(2.2, 1.5 + steeringY + Math.sin(this.time * 3) * 0.01)),
-      Math.max(-1, Math.min(1, steeringZ))
-    );
-    
-    this.camera.position.lerp(targetCameraPos, 0.12);
-    
-    this.camera.lookAt(new THREE.Vector3(0, 1.5, -10));
-    
+    // Update hand objects
     this.leftHandObject.update();
     this.rightHandObject.update();
     const headMovement = Math.abs(smoothedHeadPos.x) + Math.abs(smoothedHeadPos.y);
@@ -231,7 +254,7 @@ export class DrivingScene extends GenericScene {
       const avgZDistance = (rightWrist.z + leftWrist.z) / 2;
       const normalizedZ = (Math.abs(avgZDistance) - 1) / 2; // Normalize -1 to -3 range to 0-1
       const zSpeedModifier = Math.max(0.3, Math.min(1.5, 1 + normalizedZ));
-      this.setSpeed(this.speed * zSpeedModifier);
+      this.car.setSpeedMultiplier(zSpeedModifier);
       
     } else if (handsData.rightHand) {
       const steering = (handsData.rightHand.wristPos.x - window.innerWidth/2) / window.innerWidth;
@@ -240,7 +263,7 @@ export class DrivingScene extends GenericScene {
       // Single hand Z control (Z is now in camera space: -1 to -3)
       const normalizedZ = (Math.abs(handsData.rightHand.wristPos.z) - 1) / 2;
       const zSpeedModifier = Math.max(0.5, Math.min(1.2, 1 + normalizedZ * 0.5));
-      this.setSpeed(this.speed * zSpeedModifier);
+      this.car.setSpeedMultiplier(zSpeedModifier);
       
     } else if (handsData.leftHand) {
       const steering = (handsData.leftHand.wristPos.x - window.innerWidth/2) / window.innerWidth;
@@ -249,7 +272,7 @@ export class DrivingScene extends GenericScene {
       // Single hand Z control (Z is now in camera space: -1 to -3)
       const normalizedZ = (Math.abs(handsData.leftHand.wristPos.z) - 1) / 2;
       const zSpeedModifier = Math.max(0.5, Math.min(1.2, 1 + normalizedZ * 0.5));
-      this.setSpeed(this.speed * zSpeedModifier);
+      this.car.setSpeedMultiplier(zSpeedModifier);
     }
   }
   
@@ -317,6 +340,9 @@ export class DrivingScene extends GenericScene {
     }
     if (this.rightHandObject) {
       this.rightHandObject.dispose();
+    }
+    if (this.car) {
+      this.car.dispose();
     }
     this.walls.forEach(wall => {
       const mesh = wall.getMesh();
