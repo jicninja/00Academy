@@ -31,7 +31,7 @@ const sceneManager = new SceneTransition();
 
 const { video } = videoController;
 
-const isDebugging = false;
+const isDebugging = true;
 
 const intro = new IntroScene(renderer.getRenderer());
 
